@@ -1,0 +1,42 @@
+<script src="https://cdn.socket.io/socket.io-1.3.7.js"></script>
+<script type="text/javascript" src="bison.js"></script>
+<script>
+/**
+ * Message protocols
+ */
+var MESSAGE_TYPE_PING = 1;
+var MESSAGE_TYPE_UPDATE_PING = 2;
+var MESSAGE_TYPE_NEW_PLAYER = 3;
+var MESSAGE_TYPE_SET_COLOUR = 4;
+var MESSAGE_TYPE_UPDATE_PLAYER = 5;
+var MESSAGE_TYPE_REMOVE_PLAYER = 6;
+// var MESSAGE_TYPE_AUTHENTICATION_PASSED = 7;
+// var MESSAGE_TYPE_AUTHENTICATION_FAILED = 8;
+// var MESSAGE_TYPE_AUTHENTICATE = 9;
+var MESSAGE_TYPE_ERROR = 10;
+// var MESSAGE_TYPE_ADD_BULLET = 11;
+// var MESSAGE_TYPE_UPDATE_BULLET = 12;
+// var MESSAGE_TYPE_REMOVE_BULLET = 13;
+// var MESSAGE_TYPE_KILL_PLAYER = 14;
+// var MESSAGE_TYPE_UPDATE_KILLS = 15;
+// var MESSAGE_TYPE_REVIVE_PLAYER = 16;
+
+	var socket = io('http://localhost:8000');
+	socket.on('connect', function (data) {
+		console.log("Connected");
+		socket.send(formatMessage(Game.MESSAGE_TYPE_NEW_PLAYER, {x: 0, y: 0}));
+	});
+
+function formatMessage(type, args) {
+	var msg = {type: type};
+
+	for (var arg in args) {
+		// Don't overwrite the message type
+		if (arg != "type")
+			msg[arg] = args[arg];
+	};
+
+	//return JSON.stringify(msg);
+	return BISON.encode(msg);
+};
+</script>

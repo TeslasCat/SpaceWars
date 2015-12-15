@@ -1,35 +1,13 @@
-var Player = function(startX, startY) {
-	var x = startX,
-		y = startY,
-		id;
+var Player = function(id, x, y, colour,  name) {
+	this.id = id;
+	this.x = x;
+	this.y = y;
+	this.name = name;
+	this.age = 0; 
+	this.ping = 0;
+	this.colour = colour;
+}
 
-	// Getters and setters
-	var getX = function() {
-		return x;
-	};
-
-	var getY = function() {
-		return y;
-	};
-
-	var setX = function(newX) {
-		x = newX;
-	};
-
-	var setY = function(newY) {
-		y = newY;
-	};
-
-	// Define which variables and methods can be accessed
-	return {
-		getX: getX,
-		getY: getY,
-		setX: setX,
-		setY: setY,
-		id: id
-	}
-};
-
-// Export the Player class so you can use it in
-// other files by using require("Player").Player
-exports.Player = Player;
+exports.init = function(id, x, y, colour, name) {
+	return new Player(id, x, y, colour, name);
+}
