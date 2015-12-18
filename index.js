@@ -68,39 +68,61 @@ var setEventHandlers = function() {
 }
 
 function onSocketConnection(client) {
-
 	// client._req.socket.removeAllListeners("error");
 	// client._req.socket.on("error", function(err) {
 	// 	util.log("Socket error 1: "+err);
 	// });
 	
-	util.log("CONNECT: "+client.id);
-	
+	util.log("CONNECT: ", client.id);
 	var p = Player;
-
-	util.log("New player has connected: ", client.id);
     
-    client.on("message", onMessage);
-    client.on("disconnect", onClientDisconnect);
-    // client.on("close", onClientDisconnect);
-
-};
-
-function onMessage(msg) {
-	var data = BISON.decode(msg);
-	if (data.type) {
-		switch (data.type) {
-			case MESSAGE_TYPE_NEW_PLAYER:
-				// var colour = "rgb(0, 255, 0)";
-				// var name = client.id;
-				// var player = p.init(client.id, 0, 0, colour, name);
-				// players.push(player);
-				console.log("new".red)
-				break;
+    client.on("message", function(msg) { 
+		var data = BISON.decode(msg);
+		if (data.type) {
+			switch (data.type) {
+				case MESSAGE_TYPE_PING:
+					var player = players[indexOfByPlayerId(client.id)];
+					
+					if (player == null) {
+						break;
+					};
+					
+					player.age = 0; // Player is active
+					
+					var newTimestamp = new Date().getTime();
+					util.log("Round trip: "+(newTimestamp-data.ts)+"ms");
+					var ping = newTimestamp-data.t;
+					
+					// Send ping back to player
+					client.send(formatMessage(MESSAGE_TYPE_PING, {i: player.id, n: player.name, p: ping}));
+					
+					// Broadcast ping to other players
+					client.send(formatMessage(MESSAGE_TYPE_UPDATE_PING, {i: client.id, p: ping}));
+					
+					// Log ping to server after every 10 seconds
+					if ((newTimestamp-serverStart) % 10000 <= 3000) {
+						util.log("PING ["+client.id+"]: "+ping);
+					};
+					
+					// Request a new ping
+					sendPing(client);
+					break;
+				case MESSAGE_TYPE_NEW_PLAYER:
+					var colour = "rgb(0, 255, 0)";
+					var name = client.id;
+					var player = p.init(client.id, 0, 0, colour, name);
+					util.log("NEW_PLAYER: ", name);
+					socket.send(formatMessage(MESSAGE_TYPE_NEW_PLAYER, {x: player.x, y: player.y}));
+					players.push(player);
+					sendPing(client);
+					break;
+			};
+		} else {
+			util.log("Invalid Message protocol");
 		};
-	} else {
-		util.log("Invalid Message protocol");
-	};
+    });
+
+	client.on("disconnect", onClientDisconnect);
 };
 
 /* Handlers Functions */
@@ -119,7 +141,7 @@ function onClientDisconnect(client) {
 	players.splice(players.indexOf(removePlayer), 1);
 
 	// Broadcast removed player to connected socket clients
-	client.broadcast(formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: client.id}));
+	// client.broadcast.emit(formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: client.id}));
 	
 };
 
@@ -133,15 +155,18 @@ function initPlayerActivityMonitor(players, socket) {
 			if (player == null)
 				continue;
 			
+			// sendPing(player);
+
 			// If player has been idle for over 30 seconds
 			if (player.age > 10) {
-				socket.broadcast(formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: player.id}));
+				// socket.broadcast(formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: player.id}));
 				
 				util.log("CLOSE [TIME OUT]: "+player.id);
 				
-				socket.manager.find(player.id, function(client) {
-					client.close(); // Disconnect player for being idle
-				});
+				/* TODO: Update this */
+				// socket.manager.find(player.id, function(client) {
+				// 	client.close(); // Disconnect player for being idle
+				// });
 				
 				players.splice(indexOfByPlayerId(player.id), 1);
 				i--;
