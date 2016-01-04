@@ -45,14 +45,6 @@ function init() {
 	players = [];
 	serverStart = new Date().getTime();
 
-	app.get('/', function(req, res){
-		res.sendfile('client.html');
-	});
-
-	app.get('/bison.js', function(req, res){
-		res.sendfile('bison.js');
-	});
-
 	http.listen(8000, function(){
 		console.log('listening on *:8000'.green);
 	});
@@ -68,11 +60,7 @@ var setEventHandlers = function() {
 }
 
 function onSocketConnection(client) {
-	// client._req.socket.removeAllListeners("error");
-	// client._req.socket.on("error", function(err) {
-	// 	util.log("Socket error 1: "+err);
-	// });
-	
+
 	util.log("CONNECT: ", client.id);
 	var p = Player;
     
@@ -92,12 +80,13 @@ function onSocketConnection(client) {
 					var newTimestamp = new Date().getTime();
 					util.log("Round trip: "+(newTimestamp-data.ts)+"ms");
 					var ping = newTimestamp-data.t;
+					util.log(ping)
 					
 					// Send ping back to player
-					client.send(formatMessage(MESSAGE_TYPE_PING, {i: player.id, n: player.name, p: ping}));
+					client.emit(formatMessage(MESSAGE_TYPE_PING, {i: player.id, n: player.name, p: ping}));
 					
 					// Broadcast ping to other players
-					client.send(formatMessage(MESSAGE_TYPE_UPDATE_PING, {i: client.id, p: ping}));
+					client.broadcast.emit(formatMessage(MESSAGE_TYPE_UPDATE_PING, {i: client.id, p: ping}));
 					
 					// Log ping to server after every 10 seconds
 					if ((newTimestamp-serverStart) % 10000 <= 3000) {
@@ -112,7 +101,7 @@ function onSocketConnection(client) {
 					var name = client.id;
 					var player = p.init(client.id, 0, 0, colour, name);
 					util.log("NEW_PLAYER: ", name);
-					socket.send(formatMessage(MESSAGE_TYPE_NEW_PLAYER, {x: player.x, y: player.y}));
+					client.emit(formatMessage(MESSAGE_TYPE_NEW_PLAYER, {x: player.x, y: player.y, n: player.name}));
 					players.push(player);
 					sendPing(client);
 					break;
@@ -141,7 +130,7 @@ function onClientDisconnect(client) {
 	players.splice(players.indexOf(removePlayer), 1);
 
 	// Broadcast removed player to connected socket clients
-	// client.broadcast.emit(formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: client.id}));
+	client.emit(formatMessage('message', MESSAGE_TYPE_REMOVE_PLAYER, {i: client.id}));
 	
 };
 
@@ -159,7 +148,7 @@ function initPlayerActivityMonitor(players, socket) {
 
 			// If player has been idle for over 30 seconds
 			if (player.age > 10) {
-				// socket.broadcast(formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: player.id}));
+				socket.emit(formatMessage('message', MESSAGE_TYPE_REMOVE_PLAYER, {i: player.id}));
 				
 				util.log("CLOSE [TIME OUT]: "+player.id);
 				
@@ -246,7 +235,6 @@ function formatMessage(type, args) {
 			msg[arg] = args[arg];
 	};
 	
-	//return JSON.stringify(msg);
 	return BISON.encode(msg);
 };
 

@@ -1,5 +1,12 @@
 # Space Wars ☢
 
+## Run
+
+	cd client
+	python -m SimpleHTTPServer 8001 & 
+	cd ../server
+	node index.js
+
 ## Docker 
 
 	docker build -t spacewars .

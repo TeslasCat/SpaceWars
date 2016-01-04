@@ -1,19 +1,8 @@
-<script src="https://cdn.socket.io/socket.io-1.3.7.js"></script>
-<script type="text/javascript" src="bison.js"></script>
-<script>
-var Player = function(x, y) {
-	this.active = false;
-	this.alive = false;
-	this.bullets = [];
-	this.id;
-	this.fireGun = false;
-	this.killCount = 0;
-	this.move = false;
-	this.name;
-	this.ping = 0;
-	this.sendUpdate = false;
-	this.teleport = false;
-};
+/** 
+* Variables
+*/
+var SERVER_ADDRESS = "http://localhost";
+var SERVER_PORT    = 8000;
 
 /**
  * Message protocols
@@ -39,7 +28,7 @@ players = [];
 player = null;
 ping = "my-ping";
 
-var socket = io('http://localhost:8000');
+var socket = io(SERVER_ADDRESS + ":" + SERVER_PORT);
 
 socket.on('connect', function (server) {
 
@@ -54,28 +43,23 @@ socket.on('connect', function (server) {
 
 		if (data.type) {
 			switch (data.type) {
+				case MESSAGE_TYPE_PING:
+					$('<p>Received a Ping: '+data.p+'</p>').appendTo('div#statusbar');
+					break;
+				case MESSAGE_TYPE_UPDATE_PING:
+					$('<p>Update ping client: '+date.i+' ping: '+data.p+'</p>').appendTo('div#statusbar');
+					break;
 				case MESSAGE_TYPE_NEW_PLAYER:
 					var player = new Player(data.x, data.y);
 					player.id = data.i;
 					player.name = data.n;
 					player.active = true;
-					player.alive = true;
 					players.push(player);
+					$('<li>' + player.name + '</li>').appendTo('ul#users_online'); 
+					console.log("New Player:", player);
 					break;
-				case MESSAGE_TYPE_PING:
-					if (data.t) {
-						socket.send(msg);
-					}
-
-					if (data.p) {
-						// ping.html("@"+data.n+" - "+data.p+"ms");
-						ping = data.n + " " + data.p + "ms";
-					}
-					console.log("Recived a Ping");
-					break;
-				case MESSAGE_TYPE_UPDATE_PING:
-					var player = getPlayerById(data.i);
-					player.ping = data.p;
+				case MESSAGE_TYPE_REMOVE_PLAYER:
+					players.splice(players.indexOf(getPlayerById(data.i)), 1);
 					break;
 			}
 		}
@@ -113,5 +97,3 @@ function getPlayerById(id) {
 			return player;
 	};
 };
-
-</script>
