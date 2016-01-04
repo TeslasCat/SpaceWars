@@ -8,6 +8,4 @@ var Player = function(id, x, y, colour,  name) {
 	this.colour = colour;
 }
 
-exports.init = function(id, x, y, colour, name) {
-	return new Player(id, x, y, colour, name);
-}
+module.exports = Player;

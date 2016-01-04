@@ -2,23 +2,18 @@
 
 process.title = "SpaceWars";
 
-var app = require('express')();
-var http = require('http').Server(app);
-// var app = express();
-// var socketIO = require('socket.io');
-var io = require('socket.io')(http);
-
+var app = require('http').createServer();
+var io = require('socket.io')(app);
 var util = require("util");
-// var config = require('config');
+
+/* 
+var config = require('config');
 var colors = require('colors');
+*/
 
 /* Some of our Stuff */
 var Player = require("./Player");
 var BISON = require("./bison");
-
-var io;
-var connections;
-var serverStart;
 
 /**
  * Message protocols
@@ -43,18 +38,14 @@ var MESSAGE_TYPE_ERROR = 10;
 
 function init() {
 	players = [];
-	serverStart = new Date().getTime();
-
-	http.listen(8000, function(){
-		console.log('listening on *:8000'.green);
-	});
+	app.listen(8000);
+	util.log("Server listening on 8000");
 
 	setEventHandlers();
 	initPlayerActivityMonitor(players, io);
 
 };
 
-/* Define Handlers */
 var setEventHandlers = function() {
 	io.on('connection', onSocketConnection);
 }
@@ -62,7 +53,6 @@ var setEventHandlers = function() {
 function onSocketConnection(client) {
 
 	util.log("CONNECT: ", client.id);
-	var p = Player;
     
     client.on("message", function(msg) { 
 		var data = BISON.decode(msg);
@@ -97,13 +87,13 @@ function onSocketConnection(client) {
 					sendPing(client);
 					break;
 				case MESSAGE_TYPE_NEW_PLAYER:
-					var colour = "rgb(0, 255, 0)";
 					var name = client.id;
-					var player = p.init(client.id, 0, 0, colour, name);
-					util.log("NEW_PLAYER: ", name);
+					var player = new Player(client.id, 0, 0, name);
 					client.emit(formatMessage(MESSAGE_TYPE_NEW_PLAYER, {x: player.x, y: player.y, n: player.name}));
 					players.push(player);
 					sendPing(client);
+
+					util.log("NEW_PLAYER: ", name);
 					break;
 			};
 		} else {
@@ -130,7 +120,7 @@ function onClientDisconnect(client) {
 	players.splice(players.indexOf(removePlayer), 1);
 
 	// Broadcast removed player to connected socket clients
-	client.emit(formatMessage('message', MESSAGE_TYPE_REMOVE_PLAYER, {i: client.id}));
+	io.emit(formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: client.id}));
 	
 };
 
@@ -141,14 +131,16 @@ function initPlayerActivityMonitor(players, socket) {
 		for (var i = 0; i < playersLength; i++) {
 			var player = players[i];
 			
-			if (player == null)
+			if (player == null) {
 				continue;
+			}
 			
 			// sendPing(player);
 
 			// If player has been idle for over 30 seconds
-			if (player.age > 10) {
-				socket.emit(formatMessage('message', MESSAGE_TYPE_REMOVE_PLAYER, {i: player.id}));
+			// if (player.age > 10) {
+			if (player.age > 3) {
+				socket.emit(formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: player.id}));
 				
 				util.log("CLOSE [TIME OUT]: "+player.id);
 				

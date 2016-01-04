@@ -3,6 +3,7 @@
 */
 var SERVER_ADDRESS = "http://localhost";
 var SERVER_PORT    = 8000;
+localStorage.debug = '*';
 
 /**
  * Message protocols
@@ -32,10 +33,10 @@ var socket = io(SERVER_ADDRESS + ":" + SERVER_PORT);
 
 socket.on('connect', function (server) {
 
+	/* once made connection, create a new player, send it to the server */
 	if (player == null) {
 		player = new Player(10, 15)
 		socket.send(formatMessage(MESSAGE_TYPE_NEW_PLAYER, {x: player.x, y: player.y}));
-
 	};
 
 	socket.on("message", function(msg) {
@@ -60,6 +61,7 @@ socket.on('connect', function (server) {
 					break;
 				case MESSAGE_TYPE_REMOVE_PLAYER:
 					players.splice(players.indexOf(getPlayerById(data.i)), 1);
+					$('<p>Remove Player: ' + date.i + '</p>').appendTo('div#statusbar');
 					break;
 			}
 		}
