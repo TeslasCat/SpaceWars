@@ -2,8 +2,7 @@
 
 process.title = "SpaceWars";
 
-var app = require('http').createServer();
-var io = require('socket.io')(app);
+var io = require('socket.io')();
 var util = require("util");
 
 /* 
@@ -35,26 +34,20 @@ var MESSAGE_TYPE_ERROR = 10;
 // var MESSAGE_TYPE_UPDATE_KILLS = 15;
 // var MESSAGE_TYPE_REVIVE_PLAYER = 16;
 
+players = [];
 
-function init() {
-	players = [];
-	app.listen(8000);
-	util.log("Server listening on 8000");
+io.serveClient(false);
+io.listen(8000);
+util.log("Server listening on 8000");
+var serverStart = new Date().getTime();
 
-	setEventHandlers();
-	initPlayerActivityMonitor(players, io);
 
-};
+initPlayerActivityMonitor(players, io);
 
-var setEventHandlers = function() {
-	io.on('connection', onSocketConnection);
-}
-
-function onSocketConnection(client) {
-
+io.on('connection', function(client) {
 	util.log("CONNECT: ", client.id);
-    
-    client.on("message", function(msg) { 
+
+    client.on('message', function(msg) {
 		var data = BISON.decode(msg);
 		if (data.type) {
 			switch (data.type) {
@@ -68,32 +61,42 @@ function onSocketConnection(client) {
 					player.age = 0; // Player is active
 					
 					var newTimestamp = new Date().getTime();
-					util.log("Round trip: "+(newTimestamp-data.ts)+"ms");
+					// util.log("Round trip: "+(newTimestamp-data.ts)+"ms");
 					var ping = newTimestamp-data.t;
-					util.log(ping)
+					// util.log(ping)
 					
 					// Send ping back to player
-					client.emit(formatMessage(MESSAGE_TYPE_PING, {i: player.id, n: player.name, p: ping}));
+					client.send(formatMessage(MESSAGE_TYPE_PING, {i: player.id, n: player.name, p: ping}));
 					
 					// Broadcast ping to other players
-					client.broadcast.emit(formatMessage(MESSAGE_TYPE_UPDATE_PING, {i: client.id, p: ping}));
+					io.send(formatMessage(MESSAGE_TYPE_UPDATE_PING, {i: client.id, p: ping}));
 					
 					// Log ping to server after every 10 seconds
 					if ((newTimestamp-serverStart) % 10000 <= 3000) {
-						util.log("PING ["+client.id+"]: "+ping);
+						util.log("PING [" + client.id + "]: " + ping);
 					};
 					
 					// Request a new ping
 					sendPing(client);
 					break;
 				case MESSAGE_TYPE_NEW_PLAYER:
-					var name = client.id;
-					var player = new Player(client.id, 0, 0, name);
-					client.emit(formatMessage(MESSAGE_TYPE_NEW_PLAYER, {x: player.x, y: player.y, n: player.name}));
+					// Setup new player.
+					var player = new Player(client.id, data.x, data.y, data.name);
 					players.push(player);
-					sendPing(client);
 
-					util.log("NEW_PLAYER: ", name);
+					// Broadcast new player to all clients, including the new one.
+					io.send(formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: player.id, x: player.x, y: player.y, n: player.name}));
+
+					// Tell the new player about existing players
+					for(var i in players) {
+						// Make sure not to tell the client about it's self.
+						if(players[i].id == client.id)
+							continue;
+						client.send(formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: players[i].id, x: players[i].x, y: players[i].y, n: players[i].name}));
+					}
+
+					sendPing(client);
+					util.log("NEW_PLAYER: ", player.name, player.id);
 					break;
 			};
 		} else {
@@ -101,69 +104,53 @@ function onSocketConnection(client) {
 		};
     });
 
-	client.on("disconnect", onClientDisconnect);
-};
+	client.on("disconnect", function() {
+		util.log("Player has disconnected: ", this.id);
 
-/* Handlers Functions */
-function onClientDisconnect(client) {
-	util.log("Player has disconnected: "+this.id);
+		var removePlayer = playerById(this.id);
 
-	var removePlayer = playerById(this.id);
+		// Player not found
+		if (!removePlayer) {
+			util.log("Player not found: ", this.id);
+			return;
+		};
 
-	// Player not found
-	if (!removePlayer) {
-		util.log("Player not found: "+this.id);
-		return;
-	};
+		// Remove player from players array
+		players.splice(players.indexOf(removePlayer), 1);
 
-	// Remove player from players array
-	players.splice(players.indexOf(removePlayer), 1);
+		// Broadcast removed player to connected socket clients
+		io.send(formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: client.id}));
+	});
+});
 
-	// Broadcast removed player to connected socket clients
-	io.emit(formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: client.id}));
-	
-};
 
 function initPlayerActivityMonitor(players, socket) {
-	// Should probably stop this function from running if there are no players in the game
-	setInterval(function() {
-		var playersLength = players.length;
-		for (var i = 0; i < playersLength; i++) {
-			var player = players[i];
-			
-			if (player == null) {
+	setInterval(function() {		
+		for(var i in players) {
+			var p = players[i];
+			if(p == null)
+				continue;
+
+			if(p.age > 3){
+				io.send(formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: p.id}));
+				util.log("CLOSE [TIME OUT]: " + p.id);
+				players.splice(indexOfByPlayerId(p.id), 1);
 				continue;
 			}
-			
-			// sendPing(player);
-
-			// If player has been idle for over 30 seconds
-			// if (player.age > 10) {
-			if (player.age > 3) {
-				socket.emit(formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: player.id}));
-				
-				util.log("CLOSE [TIME OUT]: "+player.id);
-				
-				/* TODO: Update this */
-				// socket.manager.find(player.id, function(client) {
-				// 	client.close(); // Disconnect player for being idle
-				// });
-				
-				players.splice(indexOfByPlayerId(player.id), 1);
-				i--;
-				continue;
-			};
-			
-			player.age += 1; // Increase player age due to inactivity
-		};
-	}, 3000);	
+			p.age += 1;
+			// util.log("Increase player age: ", p.id);
+		}
+	}, 1000);
 };
 
-
+/* 
+ * Helper Functions 
+ */
 function sendPing(client) {
 	setTimeout(function() {
 		var timestamp = new Date().getTime();
 		client.send(formatMessage(MESSAGE_TYPE_PING, {t: timestamp.toString()}));
+		// util.log("PING: ", client.id, timestamp.toString());
 	}, 3000);
 };
 
@@ -229,6 +216,3 @@ function formatMessage(type, args) {
 	
 	return BISON.encode(msg);
 };
-
-/* RUN */
-init();
