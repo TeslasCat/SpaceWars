@@ -36,7 +36,7 @@ socket.on('connect', function () {
 	$('#btn_online').addClass('show');
 
 	// if (player == null) {
-		player = new Player(0, Math.floor(Math.random()*1001), Math.floor(Math.random()*1001), "Pete")
+		player = new Player(0, Math.floor(Math.random()*1001), Math.floor(Math.random()*1001), "")
 		socket.send(formatMessage(MESSAGE_TYPE_NEW_PLAYER, {x: player.x, y: player.y, n: player.name}));
 	// };
 
@@ -63,7 +63,7 @@ socket.on('connect', function () {
 				case MESSAGE_TYPE_REMOVE_PLAYER:
 					players.splice(players.indexOf(getPlayerById(data.i)), 1);
 					updatePlayerList();
-					$('<p>Player Disconnected: ' + data.i + '</p>').appendTo('div#statusbar');
+					// $('<p>Player Disconnected: ' + data.i + '</p>').appendTo('div#statusbar');
 					break;
 			}
 		}
@@ -79,9 +79,9 @@ function updatePlayerList(){
 	$("ul#users_online").empty();
 	for(var i in players) {
 		if(players[i].id == socket.id){
-			$("<li><b>YOU: {0} ({1},{2})</b></li>".format([players[i].id, players[i].x, players[i].y])).appendTo('ul#users_online'); 
+			$("<li><b>YOU: {0} ({1},{2})</b></li>".format([players[i].name, players[i].x, players[i].y])).appendTo('ul#users_online'); 
 		}else{
-			$("<li>{0} ({1},{2})</li>".format([players[i].id, players[i].x, players[i].y])).appendTo('ul#users_online'); 
+			$("<li>{0} ({1},{2})</li>".format([players[i].name, players[i].x, players[i].y])).appendTo('ul#users_online'); 
 		}
 	}
 }
