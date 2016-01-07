@@ -55,8 +55,10 @@ io.on('connection', function(client) {
 			switch (data.type) {
 				case MESSAGE_TYPE_PING:
 					var player = players[indexOfByPlayerId(client.id)];
+					// var player = playerById[client.id];
 					
 					if (player == null) {
+						util.log("ERROR: Unable to find player to ping: ", client.id);
 						break;
 					};
 					
@@ -134,15 +136,30 @@ function initPlayerActivityMonitor(players, socket) {
 				continue;
 
 			if(p.age > 3){
-				io.send(formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: p.id}));
+				// io.send(formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: p.id}));
 				util.log("CLOSE [TIME OUT]: ", p.name, p.id);
-				players.splice(indexOfByPlayerId(p.id), 1);
+
+				for(var id in io.sockets.sockets){
+					if(p.id == io.sockets.sockets[id].id) {
+						io.sockets.sockets[id].disconnect();
+					}
+				}
+
+				// No Need to remove from player list as it will be handled by 'disconnect'.
+				// players.splice(indexOfByPlayerId(p.id), 1);
+				// players.splice(players.indexOf(playerById[p.id]), 1);
 				continue;
 			}
 			p.age += 1;
 			// util.log("Increase player age: ", p.id);
 		}
 	}, 1000);
+
+	// setInterval(function() {
+	// 	players.forEach(function (p, i) {
+	// 		util.log("{0} {1} {2}".format([p.name, p.id, p.age]));
+	// 	});
+	// }, 2000);
 };
 
 /* 
@@ -163,12 +180,12 @@ function sendPing(client) {
  * @returns Player object
  * @type Player
  */
-function playerByName(name) {
-	for (var i = 0; i < players.length; i++) {
-		if (players[i].name == name)
-			return players[i];
-	};	
-};
+// function playerByName(name) {
+// 	for (var i = 0; i < players.length; i++) {
+// 		if (players[i].name == name)
+// 			return players[i];
+// 	};	
+// };
 
 /**
  * Find player by the player id
@@ -178,10 +195,20 @@ function playerByName(name) {
  * @type Player
  */
 function playerById(id) {
-	for (var i = 0; i < players.length; i++) {
-		if (players[i].id == id)
+
+	// players.forEach(function (p, i) {
+	// 	util.log(p.id, p.name);
+	// 	if(p.id == id){
+	// 		return i;
+	// 	};
+	// });
+
+	for(var i in players){
+		if(players[i].id == id){
 			return players[i];
-	};	
+		};
+	};
+	return null;
 };
 
 /**
@@ -192,11 +219,14 @@ function playerById(id) {
  * @type Number
  */
 function indexOfByPlayerId(id) {
-	for (var i = 0; i < players.length; i++) {
-		if (players[i].id == id) {
+
+	for (var i in players) {
+		if(players[i].id == id) {
 			return i;
 		};
-	};	
+	};
+
+	return null;
 };
 
 /**
