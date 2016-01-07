@@ -21,4 +21,4 @@ Install vagrant with libvirt support. Or change the base image to another provid
 	$ cd /vagrant
 	$ npm start
 
-From the host you should be able to access http://127.0.0.1
+From the host you should be able to access <http://127.0.0.1:8001>
