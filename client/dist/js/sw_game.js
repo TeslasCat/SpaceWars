@@ -48,7 +48,7 @@ socket.on('connect', function () {
 				case MESSAGE_TYPE_PING:
 					// $('<p>Received a Ping: ' + data.t + '</p>').appendTo('div#statusbar');
 					if (data.t) {
-						// socket.send(msg);
+						socket.send(msg);
 					}
 					break;
 				case MESSAGE_TYPE_UPDATE_PING:
