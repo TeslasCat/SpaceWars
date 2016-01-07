@@ -3,7 +3,7 @@
 */
 var SERVER_ADDRESS = "http://localhost";
 var SERVER_PORT    = 8000;
-// localStorage.debug = '*';
+localStorage.debug = '*';
 
 /**
  * Message protocols
@@ -48,7 +48,7 @@ socket.on('connect', function () {
 				case MESSAGE_TYPE_PING:
 					// $('<p>Received a Ping: ' + data.t + '</p>').appendTo('div#statusbar');
 					if (data.t) {
-						socket.send(msg);
+						// socket.send(msg);
 					}
 					break;
 				case MESSAGE_TYPE_UPDATE_PING:
@@ -61,9 +61,12 @@ socket.on('connect', function () {
 					updatePlayerList();
 					break;
 				case MESSAGE_TYPE_REMOVE_PLAYER:
-					players.splice(players.indexOf(getPlayerById(data.i)), 1);
+					var player = getPlayerById(data.i);
+					if(player != null){
+						players.splice(players.indexOf(player), 1);
+					}
 					updatePlayerList();
-					// $('<p>Player Disconnected: ' + data.i + '</p>').appendTo('div#statusbar');
+					$("<p>Player Disconnected: <b>{0}</b> {1}</p>".format(["Name", data.i])).prependTo('div#statusbar');
 					break;
 			}
 		}
@@ -71,6 +74,7 @@ socket.on('connect', function () {
 });
 
 socket.on('disconnect', function(server) {
+	$('<p>Lost Connection</p>').appendTo('div#statusbar');
 	$('#btn_offline').addClass('show');
 	$('#btn_online').addClass('hide');
 });
@@ -79,9 +83,9 @@ function updatePlayerList(){
 	$("ul#users_online").empty();
 	for(var i in players) {
 		if(players[i].id == socket.id){
-			$("<li><b>YOU: {0} ({1},{2})</b></li>".format([players[i].name, players[i].x, players[i].y])).appendTo('ul#users_online'); 
+			$("<li><b>YOU: {0} ({1},{2}) {3}</b></li>".format([players[i].name, players[i].x, players[i].y, players[i].id])).appendTo('ul#users_online'); 
 		}else{
-			$("<li>{0} ({1},{2})</li>".format([players[i].name, players[i].x, players[i].y])).appendTo('ul#users_online'); 
+			$("<li>{0} ({1},{2}) {3}</li>".format([players[i].name, players[i].x, players[i].y, players[i].id])).appendTo('ul#users_online'); 
 		}
 	}
 }
@@ -106,14 +110,13 @@ function formatMessage(type, args) {
  * @type Player
  */
 function getPlayerById(id) {
-	var playersLength = players.length;
-	
-	for (var i = 0; i < playersLength; i++) {
-		var player = players[i];
-		
-		if (player.id == id)
-			return player;
+
+	for(var p in players){
+		if(players[id].id == id)
+			return players[id];
 	};
+
+	return null;
 };
 
 
