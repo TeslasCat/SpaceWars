@@ -1,27 +1,22 @@
-var Planet = function(name, location, radius, velocity) {
+var Planet = function(name, plot, radius) {
     this.radius = radius || 10;
     this.name = name;
-    this.velocity = velocity || [0, 0];
-    this.location = location || [0, 0];
+    this.plot = plot || {x: 0, y: 0};
     this.moons = [];
 
     return this;
 };
 
-Planet.prototype.move = function(duration) {
-    // this.location[0] = this.location[0] + (this.velocity[0] * duration);
-    // this.location[1] = this.location[1] + (this.velocity[1] * duration);
-};
+Planet.prototype.getPlot = function() {
+    return c(this.plot);
+}
 
 Planet.prototype.draw = function() {
-    var screenLocation = game.getScreenLocation(this.location),
+    var planetPosition = helper.getScreenPosition(this.getPlot()),
         radius = (this.radius / 1000) * game.scale;
+
     // Do we need to draw this planet?
-    if ((screenLocation[0] < -radius ||
-        screenLocation[0] > game.canvas.width + radius) &&
-        (screenLocation[1] < -radius ||
-        screenLocation[1] > game.canvas.height + radius)
-       ) {
+    if (helper.outsideDisplay(planetPosition, this.radius)) {
         return;
     }
 
@@ -32,14 +27,14 @@ Planet.prototype.draw = function() {
     context.fillStyle="#1E1E1E";
     context.strokeStyle = 'rgba(150, 200, 255, 0.3)';
     context.beginPath();
-    context.arc(screenLocation[0], screenLocation[1], radius, 0, Math.PI * 2, true);
+    context.arc(planetPosition.x, planetPosition.y, radius, 0, Math.PI * 2, true);
     context.fill();
     context.stroke();
 
     var labelWidth = context.measureText(this.name).width;
     if (labelWidth < radius * 0.9 || game.scale > 75) {
         context.fillStyle = 'rgba(150, 200, 255, 0.3)';
-        context.fillText(this.name, screenLocation[0] - (labelWidth/2), screenLocation[1]);
+        context.fillText(this.name, planetPosition.x - (labelWidth/2), planetPosition.y);
     }
 
     for(var n = 0; n < this.moons.length; n++) {

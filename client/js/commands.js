@@ -39,6 +39,11 @@ function registerCommands() {
 
     $input.focus();
 
+    // Load history
+    if (localStorage.getItem("commands.history")) {
+        history = JSON.parse(localStorage.getItem("commands.history"));
+    }
+
     $input.on('keydown', function(e) {
         var keyCode = e.keyCode || e.which,
             text = $(this).val();
@@ -53,23 +58,11 @@ function registerCommands() {
                 $input.val($(this).val() + ' ');
             }
             return; 
-        } else if (e.which == "38") { // Up arrow
-            if (historyID < history.length) {
-                historyID++;
-                $(this).val(history[history.length-historyID]);
-            }
-        } else if (e.which == "40") { // Down arrow
-            if (historyID > 1) {
-                historyID--;
-                $(this).val(history[history.length-historyID]);
-            } else {
-                historyID = 0;
-                $(this).val('');
-            }
         } else if (e.which == "13") { // Enter key
             $(this).val('');
 
             history.push(text);
+            localStorage.setItem("commands.history", JSON.stringify(history));
             historyID = 0;
 
             // Check for command
@@ -89,10 +82,30 @@ function registerCommands() {
 
             var response = executeCommand(action, options);
             $history.append($('<li>', {text: response}));
+        } else if (e.which == "38" || e.which == "40") {
+            e.preventDefault();
         }
     });
 
     $input.on('keyup', function(e) {
+        if (e.which == "38") { // Up arrow
+            if (historyID < history.length) {
+                historyID++;
+                $(this).val(history[history.length-historyID]);
+            }
+            return;
+        } else if (e.which == "40") { // Down arrow
+            if (historyID > 1) {
+                historyID--;
+                $(this).val(history[history.length-historyID]);
+            } else {
+                historyID = 0;
+                $(this).val('');
+            }
+            return;
+        }
+
+        console.log(e);
         $suggestion.text(''); // clear suggestion
 
         var command = $(this).val();
@@ -115,16 +128,14 @@ function registerCommands() {
 
             // Find item
             game.tracking = track;
-            game.setLocation(track.location);
+            game.setPosition(track.getPlot());
             game.scale = 10;
         } else if (action == 'move') {
             var ship = lookupContext(options[0], 'ship'),
                 target = lookupContext(options[2], 'planet');
 
-            console.log(ship, target);
-
             // Find item
-            ship.setTarget(target.location);
+            ship.setWaypoint(target.getPlot());
         }
 
         return actions[action].responses[0].replace('${options}', options.join(' '));

@@ -24,10 +24,10 @@ Moon.prototype.draw = function() {
 
     context.beginPath();
 
-    var screenLocation = game.getScreenLocation(this.planet.location),
+    var shipPosition = helper.getScreenPosition(this.planet.plot),
         radius = (this.radius / 1000) * game.scale;
 
-    context.translate(screenLocation[0], screenLocation[1]);
+    context.translate(shipPosition.x, shipPosition.y);
     context.rotate(this.angle);
 
     context.arc(this.altitude * game.scale, this.altitude * game.scale, radius, 0, Math.PI * 2, true);

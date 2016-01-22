@@ -1,70 +1,90 @@
-var Ship = function(name, location, speed) {
+var Ship = function(name, plot, speed) {
     this.name = name;
     this.size = 1000;
     this.speed = speed || 5000;
-    this.location = location || [0, 0];
-    this.targetLocation = null;
+    this.plot = plot || {x: 0, y: 0};
+    this.viewDistance = 100;
+
+    this.display = {
+        trajectory: true
+    }
 
     return this;
 };
 
-Ship.prototype.setTarget = function(location) {
-    this.targetLocation = location;
+Ship.prototype.getPlot = function() {
+    return c(this.plot);
+}
 
-    this.startX = this.location[0];
-    this.startY = this.location[1];
-    this.targetDistance = Math.sqrt(Math.pow(this.targetLocation[0]-this.location[0],2)+Math.pow(this.targetLocation[1]-this.location[1],2));
-    this.targetDirectionX = (this.targetLocation[0]-this.location[0]) / this.targetDistance;
-    this.targetDirectionY = (this.targetLocation[1]-this.location[1]) / this.targetDistance;
+Ship.prototype.setWaypoint = function(plot) {
+    this.waypoint = {plot: plot};
+    this.waypoint.origin = this.getPlot();
+    this.waypoint.distance = helper.calculateDistance(this.waypoint.plot, this.waypoint.origin);
+    this.waypoint.vector = {
+                                x: (this.waypoint.plot.x - this.waypoint.origin.x) / this.waypoint.distance,
+                                y: (this.waypoint.plot.y - this.waypoint.origin.y) / this.waypoint.distance
+                           };
 
-    this.angle = Math.atan2(this.location[1] - this.targetLocation[1], this.location[0] - this.targetLocation[0]) * 180 / Math.PI;
-
-    console.log(this.angle);
-    this.angle = 180 - Math.abs(this.angle);
-    console.log(this.angle);
-    // if (this.angle < 0) {
-    //     this.angle = 180 - this.angle;
-    // }
+    console.log(this.waypoint.origin, this.waypoint.plot);
+    this.heading = helper.calculateAngle(this.waypoint.origin, this.waypoint.plot);
 };
 
-Ship.prototype.removeTarget = function(location) {
-    this.targetLocation = null;
+Ship.prototype.removeWaypoint = function() {
+    delete this.waypoint;
 };
 
 Ship.prototype.move = function(duration) {
-    if (!this.targetLocation) return;
+    if (!this.waypoint) return;
 
-    this.location[0] += this.targetDirectionX * (this.speed / 1000 * duration);
-    this.location[1] += this.targetDirectionY * (this.speed / 1000 * duration);
+    this.plot.x += this.waypoint.vector.x * (this.speed / 1000 * duration);
+    this.plot.y += this.waypoint.vector.y * (this.speed / 1000 * duration);
 
     // Have we reached our destination
-    if (Math.sqrt(Math.pow(this.location[0]-this.startX,2)+Math.pow(this.location[1]-this.startY,2)) >= this.targetDistance) {
-        this.targetLocation = null;
+    if (helper.calculateDistance(this.waypoint.origin, this.plot) >= this.waypoint.distance) {
+        this.removeWaypoint();
     }
 };
 
 Ship.prototype.draw = function() {
-    var screenLocation = game.getScreenLocation(this.location),
+    var shipPosition = helper.getScreenPosition(this.getPlot()),
         size = (this.size / 1000) * game.scale;
 
-    screenLocation[0] -= size/2;
-    screenLocation[1] -= size/2;
+    // Translate position to center of ship
+    shipPosition.x -= size / 2;
+    shipPosition.y -= size / 2;
 
     // Do we need to draw this ship?
-    if ((screenLocation[0] < -size ||
-        screenLocation[0] > game.canvas.width + size) &&
-        (screenLocation[1] < -size ||
-        screenLocation[1] > game.canvas.height + size)
-       ) {
+    if (helper.outsideDisplay(shipPosition, size)) {
         return;
     }
 
-
     var context = game.context;
 
+    if (this.waypoint && this.display.trajectory) {
+        var waypointPosition = helper.getScreenPosition(this.waypoint.plot);
+        context.lineWidth = 1;
+        context.strokeStyle = 'rgba(150, 255, 150, 0.3)';
+        context.beginPath();
+        context.moveTo(shipPosition.x, shipPosition.y);
+        context.lineTo(waypointPosition.x, waypointPosition.y);
+        context.stroke();
+    }
+
+
     context.save();
-    context.translate(screenLocation[0], screenLocation[1]);
-    context.rotate(this.angle);
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.translate(shipPosition.x, shipPosition.y);
+
+    //context.rotate(90*Math.PI/180);
+    context.rotate(this.heading);
+
+    // context.lineWidth = 1;
+    // context.strokeStyle = 'rgba(255, 150, 150, 0.3)';
+    // context.beginPath();
+    // context.moveTo(0,0);
+    // context.lineTo(-1000,0);
+    // context.stroke();
+
 
     context.lineWidth = 1;
     context.strokeStyle = 'rgba(150, 255, 200, 0.3)';
@@ -80,7 +100,7 @@ Ship.prototype.draw = function() {
     var labelWidth = context.measureText(this.name).width;
     if (labelWidth < size * 0.9 || game.scale > 5) {
         context.fillStyle = 'rgba(150, 255, 200, 0.3)';
-        context.fillText(this.name, screenLocation[0] + (size/2) - (labelWidth/2), screenLocation[1] - 3*game.scale);
+        context.fillText(this.name, shipPosition.x + (size/2) - (labelWidth/2), shipPosition.y - 3*game.scale);
     }
 
 };
