@@ -2,13 +2,19 @@ var registerMouseListeners = function() {
     game.canvas.onwheel = function (e){
         if (mouseDown) return;
 
-        game.scale += normalizeWheelSpeed(e);
+        if (normalizeWheelSpeed(e) > 0) {
+            game.scale *= 1.2;
+        } else {
+            game.scale /= 1.2;
+        }
+        // game.scale += normalizeWheelSpeed(e);
 
         if (game.scale < 1) {
             game.scale = 1;
         } else {
+            // game.setPosition(helper.getGamePosition({ x: e.pageX, y: e.pageY }));
             // game.setLocation(game.tracking.location);
-            // game.location = game.getGameLocation([e.pageX, e.pageY]);
+            // game.setPosition(helper.getGamePosition({ x: e.pageX, y: e.pageY }));
             // game.position.x = (e.pageX * game.scale) - game.position.x;
             // game.position.x = (e.pageY * game.scale) - game.position.x;
         }
@@ -51,15 +57,13 @@ var registerMouseListeners = function() {
             };
 
             mouseDown = false;
-        }
+        }        
     };
 
     game.canvas.onmousemove = function(e) {
         if(!mouseDown) return; // don't pan if mouse is not pressed
 
-        if (game.tracking) {
-            game.tracking = null;
-        }
+        game.removeTargetPosition();
 
         game.position = {
             x: (e.pageX/game.scale) - mouseDragStart[0],
