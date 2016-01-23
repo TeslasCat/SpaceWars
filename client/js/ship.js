@@ -1,7 +1,7 @@
 var Ship = function(name, plot, speed) {
     this.name = name;
     this.size = 0.1 / 1000;
-    this.speed = speed / 3600 || 10000 / 3600; // Defaults to 1000kmph
+    this.speed = speed / 3600 || 1000 / 3600; // Defaults to 1000kmph
     this.plot = plot || {x: 0, y: 0};
     this.viewDistance = 1;
 
@@ -27,11 +27,13 @@ Ship.prototype.setWaypoint = function(target) {
                            };
 
     // Adjust for orbit
-    this.waypoint.plot.x -= this.waypoint.vector.x * target.radius / 1000;
-    this.waypoint.plot.y -= this.waypoint.vector.y * target.radius / 1000;
+    this.waypoint.plot.x -= this.waypoint.vector.x * (target.radius + 1);
+    this.waypoint.plot.y -= this.waypoint.vector.y * (target.radius + 1);
     this.waypoint.distance = helper.calculateDistance(this.waypoint.plot, this.waypoint.origin);
 
     this.heading = helper.calculateAngle(this.waypoint.origin, this.waypoint.plot);
+
+    return this.waypoint;
 };
 
 Ship.prototype.removeWaypoint = function() {

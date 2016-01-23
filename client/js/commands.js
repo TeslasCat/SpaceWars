@@ -136,10 +136,10 @@ function registerCommands() {
                 target = lookupContext(options[2], 'planet');
 
             // Find item
-            ship.setWaypoint(target);
+            var waypoint = ship.setWaypoint(target);
 
             // Get ETA
-            response += ' ETA: ' + helper.calculateETA(ship, target.getPlot());
+            response += '. ETA: ' + helper.calculateETA(ship, waypoint.plot);
         }
 
         return response;
