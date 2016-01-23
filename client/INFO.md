@@ -1,3 +1,6 @@
+### In game scale
+1 = 1,000km
+
 ### Terminology
 Terminology | Meaning
 ------------ | -------------

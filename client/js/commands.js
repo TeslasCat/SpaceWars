@@ -58,7 +58,7 @@ function registerCommands() {
                 $input.val($(this).val() + ' ');
             }
             return; 
-        } else if (e.which == "13") { // Enter key
+        } else if (e.which == "13" && text) { // Enter key
             $(this).val('');
 
             history.push(text);
@@ -105,7 +105,6 @@ function registerCommands() {
             return;
         }
 
-        console.log(e);
         $suggestion.text(''); // clear suggestion
 
         var command = $(this).val();
@@ -123,6 +122,8 @@ function registerCommands() {
     });
 
     function executeCommand(action, options) {
+        var response = actions[action].responses[0].replace('${options}', options.join(' '));
+
         if (action == 'goto') {
             var track = lookupContext(options[0], 'object');
 
@@ -135,10 +136,13 @@ function registerCommands() {
                 target = lookupContext(options[2], 'planet');
 
             // Find item
-            ship.setWaypoint(target.getPlot());
+            ship.setWaypoint(target);
+
+            // Get ETA
+            response += ' ETA: ' + helper.calculateETA(ship, target.getPlot());
         }
 
-        return actions[action].responses[0].replace('${options}', options.join(' '));
+        return response;
     }
 
     function lookupCommand(command) {

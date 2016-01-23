@@ -2,7 +2,7 @@ var registerMouseListeners = function() {
     game.canvas.onwheel = function (e){
         if (mouseDown) return;
 
-        game.scale += normalizeWheelSpeed(e) / 2;
+        game.scale += normalizeWheelSpeed(e);
 
         if (game.scale < 1) {
             game.scale = 1;

@@ -25,12 +25,13 @@ $(function() {
 
     // Add ships
     game.ships = [];
-    var ship = new Ship('FR00001', {x: 100, y: 250});
-    ship.setWaypoint({x: 0, y: 0});
+    var ship = new Ship('FR00001', {x: 15, y: 0});
+    // ship.setWaypoint({x: 0, y: 0});
     game.ships.push(ship);
 
-    game.tracking = ship;
-    game.scale = 10;
+    // game.position = ship.getPlot();
+    // game.tracking = ship;
+    game.scale = 8;
 
     // Add a new planet
     game.planets = [];
@@ -38,27 +39,34 @@ $(function() {
         /**/ tmpMoon,
         /**/ planetNames = ['ALPHA', 'GAMMA', 'BETA'];
 
-    for (i = 0; i < 100; i++) {
 
-        name = planetNames[helper.rand(0, planetNames.length)] + '-' + i;
-        tmpLoc = {
-            x: helper.rand(0, game.canvas.width * 2) - game.canvas.width,
-            y: helper.rand(0, game.canvas.height * 2) - game.canvas.height
-        };
-        tmpRadius = helper.rand(5000, 15000);
-        tmpPlanet = new Planet(name, tmpLoc, tmpRadius);
+    tmpPlanet = new Planet('Avoid', { x: 15, y: 50}, 5);
+    game.planets.push(tmpPlanet);
 
-        mCount = helper.rand(0, 5);
-        for (j = 0; j < mCount; j++) {
-            /**/ tmpAltitude = Math.floor(Math.random() * ((tmpRadius/1000)*2)) + (tmpRadius/1000)*1.3;
-            /**/ tmpSpeed = Math.floor(Math.random() * 4) + 0.3;
-            /**/ tmpMoon = new Moon(name + '.' + j, tmpPlanet, 250, tmpAltitude, tmpSpeed);
-            tmpMoon.angle = Math.floor(Math.random() * 360);
-            tmpPlanet.moons.push(tmpMoon);
-        }
+    tmpPlanet = new Planet('Hello', { x: 100, y: 100}, 5);
+    game.planets.push(tmpPlanet);
 
-        game.planets.push(tmpPlanet);
-    }
+    // for (i = 0; i < 100; i++) {
+
+    //     name = planetNames[helper.rand(0, planetNames.length)] + '-' + i;
+    //     tmpLoc = {
+    //         x: helper.rand(0, game.canvas.width * 2) - game.canvas.width,
+    //         y: helper.rand(0, game.canvas.height * 2) - game.canvas.height
+    //     };
+    //     tmpRadius = helper.rand(5000, 15000);
+    //     tmpPlanet = new Planet(name, tmpLoc, tmpRadius);
+
+    //     mCount = helper.rand(0, 5);
+    //     for (j = 0; j < mCount; j++) {
+    //         /**/ tmpAltitude = Math.floor(Math.random() * ((tmpRadius/1000)*2)) + (tmpRadius/1000)*1.3;
+    //         /**/ tmpSpeed = Math.floor(Math.random() * 4) + 0.3;
+    //         /**/ tmpMoon = new Moon(name + '.' + j, tmpPlanet, 250, tmpAltitude, tmpSpeed);
+    //         tmpMoon.angle = Math.floor(Math.random() * 360);
+    //         tmpPlanet.moons.push(tmpMoon);
+    //     }
+
+    //     game.planets.push(tmpPlanet);
+    // }
 
 
     function drawBG() {
@@ -93,11 +101,14 @@ $(function() {
         game.context.clearRect(0, 0, game.canvas.width, game.canvas.height);
         game.context.setLineDash([]);
 
+        // Update game view
+        game.update(duration);
+
         drawBG();
 
         // Are we tracking something?
         if (game.tracking) {
-            game.setPosition(game.tracking.plot);
+            game.setPosition(game.tracking.getPlot());
         }
 
         for(i = game.planets.length - 1; i >= 0; i--) {
@@ -117,3 +128,11 @@ $(function() {
     lastDraw = (new Date()).getTime();
     drawGame(lastDraw);
 });
+
+var epoch = Date.parse("January 30, 2016 14:20");
+function updateTimer() {
+    $('.time').text(helper.getTime());
+
+    setTimeout(updateTimer, 1000);
+}
+updateTimer();

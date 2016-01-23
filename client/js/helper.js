@@ -27,6 +27,31 @@ var helper = {
         }
     },
 
+    getTime: function(offset) {
+        var seconds = (new Date().getTime() - epoch) / 1000;
+
+        if (offset) {
+            seconds += offset;
+        }
+
+        var past = (seconds < 0);
+        seconds = Math.abs(seconds);
+        var days = Math.floor(seconds / 86400);
+        seconds -= days * 86400;
+        var hours = Math.floor(seconds / 3600);
+        seconds -= hours * 3600;
+        var minutes = Math.floor(seconds / 60);
+        seconds -= minutes * 60;
+        seconds = Math.floor(seconds);
+
+        return (past?'-':'')+days+'.'+hours+'.'+minutes+'.'+seconds;
+    },
+
+    calculateETA: function(ship, plot2) {
+        var distance = this.calculateDistance(ship.getPlot(), plot2);
+
+        return this.getTime(distance / ship.speed);
+    },
 
     // Convert on game coordinates to screen coordinates
     getScreenPosition: function(plot) {
@@ -62,9 +87,8 @@ var helper = {
             theta += 2 * Math.PI;
         return theta * 180/Math.PI;
     },
-    lineIntersectsCircle(ahead :Vector3D, ahead2 :Vector3D, obstacle :Circle) :Boolean {
-        // the property "center" of the obstacle is a Vector3D.
-        return distance(obstacle.center, ahead) <= obstacle.radius || distance(obstacle.center, ahead2) <= obstacle.radius;
+    lineIntersectsCircle: function(ahead, ahead2, obstacle) {
+        return this.calculateDistance(obstacle.plot, ahead) <= obstacle.radius || this.calculateDistance(obstacle.plot, ahead2) <= obstacle.radius;
     }
 }
 
