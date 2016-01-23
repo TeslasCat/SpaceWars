@@ -25,7 +25,7 @@ $(function() {
 
     // Add ships
     game.ships = [];
-    var ship = new Ship('FR00001', {x: 15, y: 0});
+    var ship = new Ship('FR00001', {x: 0, y: 0});
     // ship.setWaypoint({x: 0, y: 0});
     game.ships.push(ship);
 
@@ -73,26 +73,30 @@ $(function() {
         var bgSize = 10 * game.scale;
         var center = helper.getScreenPosition({x: 0, y: 0});
 
-        game.context.fillStyle = 'hsla(0, 0%, 50%, 0.05)';
-
-        // Do vertical lines
-        var i = Math.round(game.canvas.width / bgSize / 2);
-        while (i--) {
-            game.context.fillRect(center.x + (i * bgSize), 0, 1, game.canvas.height);
-            game.context.fillRect(center.x - (i * bgSize), 0, 1, game.canvas.height);
+        // Draw center lines
+        game.context.fillStyle = 'rgba(125, 0, 0, 0.3)';
+        if (center.x >= 0 && center.x <= gameCanvas.width) {
+            game.context.fillRect(center.x, 0, 1, game.canvas.height);
+        }
+        if (center.y >= 0 && center.y <= gameCanvas.height) {
+            game.context.fillRect(0, center.y, game.canvas.width, 1);
         }
 
-        i = Math.round(game.canvas.height / bgSize / 2);
-        // Do horizontal lines
+        // Draw vertical lines
+        game.context.fillStyle = 'rgba(100, 100, 100, 0.1)';
+
+        var offset = Math.floor(center.x % bgSize),
+            i = Math.ceil(game.canvas.width / bgSize) + 1;
         while (i--) {
-            game.context.fillRect(0, center.y + (i * bgSize), game.canvas.width, 1);
-            game.context.fillRect(0, center.y - (i * bgSize), game.canvas.width, 1);
+            game.context.fillRect(offset + (i * bgSize), 0, 1, game.canvas.height);
         }
 
-        // Do center lines
-        game.context.fillStyle = 'hsla(0, 0%, 50%, 0.07)';
-        game.context.fillRect(center.x, 0, 1, game.canvas.height);
-        game.context.fillRect(0, center.y, game.canvas.width, 1);
+        // Draw horizontal lines
+        offset = Math.floor(center.y % bgSize);
+        i = Math.ceil(game.canvas.height / bgSize) + 1;
+        while (i--) {
+            game.context.fillRect(0, offset + (i * bgSize), game.canvas.width, 1);
+        }
     }
 
     function drawGame(lastDraw) {
