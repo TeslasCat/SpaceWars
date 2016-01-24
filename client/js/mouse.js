@@ -31,6 +31,7 @@ var registerMouseListeners = function() {
         return normalized;
     }
 
+    var mouseOver = null;
 
     var mouseDown = false;
     var mouseDragStart = [];
@@ -61,13 +62,26 @@ var registerMouseListeners = function() {
     };
 
     game.canvas.onmousemove = function(e) {
-        if(!mouseDown) return; // don't pan if mouse is not pressed
+        if (mouseOver) {
+            helper.setCursor();
+            mouseOver.hover = false;
+        }
 
-        game.removeTargetPosition();
 
-        game.position = {
-            x: (e.pageX/game.scale) - mouseDragStart[0],
-            y: (e.pageY/game.scale) - mouseDragStart[1]
-        };
+        // Panning
+        if(mouseDown) {
+            game.removeTargetPosition();
+
+            game.position = {
+                x: (e.pageX/game.scale) - mouseDragStart[0],
+                y: (e.pageY/game.scale) - mouseDragStart[1]
+            };
+        } else { // Mouse over
+            mouseOver = helper.collision(helper.getGamePosition({ x: e.pageX, y: e.pageY }));
+            if (mouseOver) {
+                helper.setCursor('pointer');
+                mouseOver.hover = true;
+            }
+        }
     }
 }
