@@ -1,5 +1,5 @@
 var Planet = function(name, plot, radius) {
-    this.radius = radius || 5000;
+    this.radius = radius || 5;
     this.name = name;
     this.plot = plot || {x: 0, y: 0};
     this.moons = [];

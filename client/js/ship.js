@@ -2,7 +2,6 @@ var Ship = function(name, plot, speed) {
     this.name = name;
     this.size = 1 / 1000;
     this.speed = speed / 3600 || 1000 / 3600; // Defaults to 1000kmph
-    this.speed = 5;
     this.plot = plot || {x: 0, y: 0};
     this.viewDistance = 10;
 
@@ -32,6 +31,7 @@ Ship.prototype.getPlot = function() {
 
 Ship.prototype.setWaypoint = function(target) {
     this.waypoint = {};
+    this.waypoint.target = target;
     this.waypoint.plot = target.getPlot();
     this.waypoint.origin = this.getPlot();
     this.waypoint.distance = helper.calculateDistance(this.waypoint.plot, this.waypoint.origin);
@@ -59,7 +59,7 @@ Ship.prototype.avoidPlanets = function() {
     var ahead = {x : this.plot.x + (this.waypoint.vector.x * this.viewDistance) , y: this.plot.y + (this.waypoint.vector.y * this.viewDistance)},
         ahead2 = {x : this.plot.x + (this.waypoint.vector.x * this.viewDistance * 0.5) , y: this.plot.y + (this.waypoint.vector.y * this.viewDistance * 0.5)};
 
-    console.log(helper.lineIntersectsCircle(ahead, ahead2, { plot: {x: 15, y: 50}, radius: 5000}));
+    // console.log(helper.lineIntersectsCircle(ahead, ahead2, { plot: {x: 15, y: 50}, radius: 5000}));
 }
 
 Ship.prototype.move = function(duration) {

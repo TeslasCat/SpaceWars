@@ -56,19 +56,54 @@ body {
     transform: rotate(-90deg);
     transform-origin: 0 0 0;
     width: 100px;
+    transition: 0.3s;
 }
 
 .sidebar-handle .label span {
     padding: 0 5px;
 }
 
-#sidebar .sidebar-handle .label i {
-    transition: 0.3s;
+.sidebar-handle:hover .label {
+    color: rgba(200, 200, 200, 0.8);
 }
 
 #sidebar.sidebar--open .sidebar-handle .label i {
     transform: rotate(180deg);
     transform-origin: center 7px;
+}
+
+#sidebar .sidebar-item {
+    color: #1f1f1f;
+    background: #dedede;
+    padding: 10px;
+    font-size: 0.8em;
+    cursor: pointer;
+    margin: 10px;
+}
+
+#sidebar .sidebar-item:not(:first-child) {
+    font-size: 0.6em;
+    opacity: 0.5;
+}
+
+#sidebar .sidebar-item[data-type=ship] { border-left: 5px solid rgb(150, 255, 200); }
+#sidebar .sidebar-item[data-type=planet] { border-left: 5px solid rgb(150, 200, 255); }
+
+#sidebar .sidebar-item h3 {
+    line-height: 1.1em;
+    margin: 0;
+    margin-bottom: 3px;
+}
+
+#sidebar .sidebar-item ul {
+    list-style: none;
+    margin: 5px 0 0;
+    padding: 0;
+}
+
+#sidebar .sidebar-item li {
+    font-size: 0.9em;
+    line-height: 1.5em;
 }
 
 

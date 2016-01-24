@@ -71,7 +71,7 @@ var registerMouseListeners = function() {
                     if (mouseOver) {
                         doubleClickTimer = setTimeout((function(object) {
                             return function() {
-                                // UI.showInfo(object);
+                                game.ui.showInfo(object);
                             };
                         })(mouseOver), doubleClickThreshold);
                     }

@@ -1,13 +1,15 @@
 var game = {
+    ui: new UI(),
     epoch: Date.parse("January 30, 2016 14:20"),
     context: null,
     scale: 1,
     position: {x: 0, y: 0},
-    panningSpeed: 100,
+    panningSpeed: 500,
     getPosition: function() {
         return c(this.position);
     },
     setPosition: function(position) {
+        console.log(position);
         position.x = -position.x;
         position.y = -position.y;
         this.targetPosition = {};
@@ -26,6 +28,7 @@ var game = {
         }
     },
     removeTargetPosition: function() {
+        delete game.tracking;
         delete this.targetPosition;
     },
     update: function(duration) {

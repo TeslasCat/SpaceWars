@@ -35,6 +35,15 @@ var helper = {
         }
     },
 
+    formatNumber: function(n, decimals, scale) {
+        if (scale) n *= 1000;
+        decimals = isNaN(decimals = Math.abs(decimals)) ? 2 : decimals, 
+        s = n < 0 ? "-" : "", 
+        i = parseInt(n = Math.abs(+n || 0).toFixed(decimals)) + "", 
+        j = (j = i.length) > 3 ? j % 3 : 0;
+       return s + (j ? i.substr(0, j) + ',' : "") + i.substr(j).replace(/(\d{3})(?=\d)/g, "$1" + ',') + (decimals ? '.' + Math.abs(n - i).toFixed(decimals).slice(2) : "");
+    },
+
     getTime: function(offset) {
         var seconds = (new Date().getTime() - game.epoch) / 1000;
 
@@ -59,6 +68,29 @@ var helper = {
         var distance = this.calculateDistance(ship.getPlot(), plot2);
 
         return this.getTime(distance / ship.speed);
+    },
+
+
+    getObject: function(search, type) {
+        console.log(search, type);
+
+        if (!type || type == 'ship' || type == 'object') {
+            for(var n = game.ships.length - 1; n >= 0; n--) {
+                if (game.ships[n].name == search) {
+                    return game.ships[n];
+                }
+            }
+        }
+
+        if (!type || type == 'planet' || type == 'object') {
+            console.log('hi');
+            for(var n = game.planets.length - 1; n >= 0; n--) {
+                console.log(game.planets[n].name, search);
+                if (game.planets[n].name == search) {
+                    return game.planets[n];
+                }
+            }
+        }
     },
 
     // Convert on game coordinates to screen coordinates

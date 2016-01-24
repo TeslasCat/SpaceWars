@@ -145,6 +145,11 @@ function registerCommands() {
 
             // Get ETA
             response += '. ETA: ' + helper.calculateETA(ship, waypoint.plot);
+        } else if (action == 'info') {
+            var object = lookupContext(options[0], 'object');
+
+            // Find item
+            game.ui.showInfo(object);
         } else if (action == 'zoom') {
             game.scale = options[0];
         }
