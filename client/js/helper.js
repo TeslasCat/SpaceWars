@@ -63,8 +63,8 @@ var helper = {
     // Convert on screen coordinates to game coordinates
     getGamePosition: function(plot) {
         return {
-            x: (plot.x - game.canvas.width/2) / game.scale - game.position.x,
-            y: (plot.y - game.canvas.height/2 + game.position.y) / game.scale - game.position.y
+            x: (plot.x - game.canvas.width/2) / game.scale - game.position.x ,
+            y: (plot.y - game.canvas.height/2) / game.scale - game.position.y
         };
     },
     // Is the item outside visible porition of screen
