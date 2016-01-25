@@ -159,14 +159,14 @@ function newPlayer(socket, data) {
 	players.push(player);
 
 	// Broadcast new player to all clients, excluding the client.
-	broadcast_excluded(socket.id, formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: player.id, n: player.name}));
+	broadcast_excluded(socket.id, formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: player.id, n: player.name, s: player.ships}));
 
 	// Tell the new player about existing players
 	for(var i in players) {
 		// Make sure NOT to tell the client about it's self.
 		if(players[i].id == socket.id)
 			continue;
-		socket.send(formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: players[i].id, n: players[i].name}));
+		socket.send(formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: players[i].id, n: players[i].name, s: players[i].ships}));
 	}
 
 	sendPing(socket);
@@ -174,6 +174,7 @@ function newPlayer(socket, data) {
 }
 
 function initPlayerActivityMonitor(players, socket) {
+	// Tell the ne
 	setInterval(function() {		
 		for(var i in players) {
 			var p = players[i];

@@ -66,8 +66,6 @@ UI.prototype.showInfo = function(object) {
 
         info = [
             'ID: ' + object.id,
-            'Ships: ' + object.ships,
-            'Planets: ' + object.planets,
         ];
     }
 

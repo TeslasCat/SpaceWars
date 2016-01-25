@@ -75,7 +75,10 @@ conn.socket.on('connect', function() {
                         break;
                     }
 
-                    var player = new Player(data.i, data.n);
+                    var player = new Player(data.i, data.n, data.s);
+                    // TODO: Add player's ships to game, make the distinction between player's ships.
+                    console.log(player.ships)
+                    
                     game.players.push(player);
 
                     // TODO: Fix this up.
