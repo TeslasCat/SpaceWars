@@ -3,11 +3,14 @@ var conn = {
      * Message protocols
      */
     MESSAGE_TYPE_PING : 1,
-    MESSAGE_TYPE_UPDATE_PING : 2,
+    // MESSAGE_TYPE_UPDATE_PING : 2,
     MESSAGE_TYPE_NEW_PLAYER : 3,
-    MESSAGE_TYPE_SET_COLOUR : 4,
+    // MESSAGE_TYPE_SET_COLOUR : 4,
     MESSAGE_TYPE_UPDATE_PLAYER : 5,
     MESSAGE_TYPE_REMOVE_PLAYER : 6,
+    MESSAGE_TYPE_AUTHENTICATION_PASSED : 7,
+    MESSAGE_TYPE_AUTHENTICATION_FAILED : 8,
+    MESSAGE_TYPE_AUTHENTICATE : 9,
 
     /**
      * Init Connection to Server.
@@ -41,16 +44,23 @@ var conn = {
 
 /* once made connection, create a new player, send it to the server */
 conn.socket.on('connect', function() {
-    conn.socket.send(conn.formatMessage(conn.MESSAGE_TYPE_NEW_PLAYER, { n: "Me"} ));
+
+    if(!game.the_player){
+        /* TODO: AUTH The User */
+        conn.socket.send(conn.formatMessage(conn.MESSAGE_TYPE_AUTHENTICATE, { u: "user_a", p: "open-the-gate"} ));
+    }else {
+        console.log(game.the_player);
+    }
 
     conn.socket.on("message", function(msg) {
         var data = BISON.decode(msg);
-        console.log(msg, data);
-        // console.log('Received Type: ' + data.type);
+
+        /* DEBUG */
+        // console.log(msg, data);
+        
         if (data.type) {
             switch (data.type) {
                 case conn.MESSAGE_TYPE_PING:
-                    // console.log('Received a Ping: ' + data.p);
                     if (data.t) {
                         conn.socket.send(msg);
                     }
@@ -59,8 +69,15 @@ conn.socket.on('connect', function() {
                     console.log('Update ping client: '+data.i+' ping: '+data.p);
                     break;
                 case conn.MESSAGE_TYPE_NEW_PLAYER:
+                    if(data.i == conn.socket.id){
+                        console.log("Skipped adding myself to the players list.");
+                        break;
+                    }
+
                     var player = new Player(data.i, data.n);
                     game.players.push(player);
+
+                    // TODO: Fix this up.
                     game.ui.showInfo(player);
                     break;
                 case conn.MESSAGE_TYPE_REMOVE_PLAYER:
@@ -72,6 +89,18 @@ conn.socket.on('connect', function() {
 
                     console.log("Player has disconnected: ", p.name, p.id);
                     game.players.splice(game.players.indexOf(p), 1);
+                    break;
+                case conn.MESSAGE_TYPE_AUTHENTICATION_PASSED:
+                    game.the_player = new Player(conn.socket.id, data.n);
+
+                    console.log("You're authed as: ", data.n);
+                    console.log("These are your ships: ");
+                    for(var i in data.s){
+                        console.log(data.s[i].name);
+                    }
+                    break;
+                case conn.MESSAGE_TYPE_AUTHENTICATION_FAILED:
+                    console.log("Failed to Auth palyer. Check username and password.");
                     break;
             }
         }

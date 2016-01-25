@@ -40,9 +40,7 @@ var MESSAGE_TYPE_ERROR = 10;
 // var MESSAGE_TYPE_REVIVE_PLAYER = 16;
 
 /* Setup example users */
-
-
-// db.insert([{user_name: "user_a", password: "open-the-gate", x: "10", y: "15", name: "Pete"}], function (err, newDocs) {
+// db.insert([{user_name: "user_a", password: "open-the-gate", name: "Pete"}], function (err, newDocs) {
 //   // Two documents were inserted in the database
 //   // newDocs is an array with these documents, augmented with their _id
 // });
@@ -55,7 +53,6 @@ io.serveClient(false);
 io.listen(8000);
 util.log("Server listening on 8000");
 var serverStart = new Date().getTime();
-
 
 initPlayerActivityMonitor(players, io);
 
@@ -100,14 +97,42 @@ io.on('connection', function on_connection(client) {
 				case MESSAGE_TYPE_AUTHENTICATE:
 					db.find({ $and: [{user_name: data.u }, {password: data.p}] }, function auth_user(err, res) {
 						if (res.length === 1) {
-							client.send(formatMessage(MESSAGE_TYPE_AUTHENTICATION_PASSED, {i: client.id, x: res[0].x, y: res[0].y, n: res[0].name} ));
+							// TODO: Example Ships
+							exampleShips = [
+								{name: "The Flying Cat"},
+								{name: "Dark Matter Kitten"}
+							]
+							client.send(formatMessage(MESSAGE_TYPE_AUTHENTICATION_PASSED, {i: client.id, n: res[0].name, s: exampleShips} ));
 							util.log(util.format("AUTH SUCCESS: ", data.u, client.id));
+
+							/**********************************************************/
+							// TODO: This is duplicate code untill it gets refactored.
+							var player = new Player(client.id, res[0].name);
+							player.ships = exampleShips;
+							players.push(player);
+
+							// Broadcast new player to all clients, excluding the client.
+							broadcast_excluded(client.id, formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: player.id, n: player.name}));
+
+							// Tell the new player about existing players
+							for(var i in players) {
+								// Make sure NOT to tell the client about it's self.
+								if(players[i].id == client.id)
+									continue;
+								client.send(formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: players[i].id, n: players[i].name}));
+							}
+
+							sendPing(client);
+							util.log(util.format("NEW_PLAYER: ", player.name, player.id));
+							// End Duplicated code!
+							/**********************************************************/
+
 						} else {
 							client.send(formatMessage(MESSAGE_TYPE_AUTHENTICATION_FAILED));
 							util.log(util.format("AUTH FAIL: ", data.u, client.id));
 						};
 					});
-					// util.log(d)
+					break;
 				case MESSAGE_TYPE_NEW_PLAYER:
 					// Setup new player.
 					var player = new Player(client.id, data.n);

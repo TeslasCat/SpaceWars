@@ -23,6 +23,7 @@ $(function() {
     registerMouseListeners();
     registerCommands();
 
+    game.the_player = null;
     game.players = [];
 
     // Add ships
