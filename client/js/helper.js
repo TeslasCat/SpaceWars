@@ -27,6 +27,23 @@ var helper = {
         }
     },
 
+    setCursor: function(cursor) {
+        if (cursor) {
+            game.canvas.style.cursor = cursor;
+        } else {
+            game.canvas.style.cursor = 'default';
+        }
+    },
+
+    formatNumber: function(n, decimals, scale) {
+        if (scale) n *= 1000;
+        decimals = isNaN(decimals = Math.abs(decimals)) ? 2 : decimals, 
+        s = n < 0 ? "-" : "", 
+        i = parseInt(n = Math.abs(+n || 0).toFixed(decimals)) + "", 
+        j = (j = i.length) > 3 ? j % 3 : 0;
+       return s + (j ? i.substr(0, j) + ',' : "") + i.substr(j).replace(/(\d{3})(?=\d)/g, "$1" + ',') + (decimals ? '.' + Math.abs(n - i).toFixed(decimals).slice(2) : "");
+    },
+
     getTime: function(offset) {
         var seconds = (new Date().getTime() - game.epoch) / 1000;
 
@@ -53,6 +70,29 @@ var helper = {
         return this.getTime(distance / ship.speed);
     },
 
+
+    getObject: function(search, type) {
+        console.log(search, type);
+
+        if (!type || type == 'ship' || type == 'object') {
+            for(var n = game.ships.length - 1; n >= 0; n--) {
+                if (game.ships[n].name == search) {
+                    return game.ships[n];
+                }
+            }
+        }
+
+        if (!type || type == 'planet' || type == 'object') {
+            console.log('hi');
+            for(var n = game.planets.length - 1; n >= 0; n--) {
+                console.log(game.planets[n].name, search);
+                if (game.planets[n].name == search) {
+                    return game.planets[n];
+                }
+            }
+        }
+    },
+
     // Convert on game coordinates to screen coordinates
     getScreenPosition: function(plot) {
         return {
@@ -63,8 +103,8 @@ var helper = {
     // Convert on screen coordinates to game coordinates
     getGamePosition: function(plot) {
         return {
-            x: (plot.x - game.canvas.width/2) / game.scale - game.position.x,
-            y: (plot.y - game.canvas.height/2 + game.position.y) / game.scale - game.position.y
+            x: (plot.x - game.canvas.width/2) / game.scale - game.position.x ,
+            y: (plot.y - game.canvas.height/2) / game.scale - game.position.y
         };
     },
     // Is the item outside visible porition of screen
@@ -120,6 +160,28 @@ var helper = {
         y = (plot1.x - plot2.x) * Math.sin(angle) + (plot1.y - plot2.y) * Math.cos(angle) + plot2.y;
 
         return {x: x, y: y};
+    },
+    collision: function(plot, type) {
+        var object;
+
+        // Ships
+        // for (i = game.ships.length - 1; i >= 0; i--) {
+        //     object = game.ships[i];
+
+        //     console.log(helper.calculateDistance(plot, object.plot), object.radius);
+        //     if (helper.calculateDistance(plot, object.plot) <= object.radius) {
+        //         return object;
+        //     }
+        // }
+
+        // Planets
+        for (i = game.planets.length - 1; i >= 0; i--) {
+            object = game.planets[i];
+
+            if (helper.calculateDistance(plot, object.plot) <= object.radius) {
+                return object;
+            }
+        }
     }
 }
 

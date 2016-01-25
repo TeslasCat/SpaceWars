@@ -1,8 +1,9 @@
 var Planet = function(name, plot, radius) {
-    this.radius = radius || 5000;
+    this.radius = radius || 5;
     this.name = name;
     this.plot = plot || {x: 0, y: 0};
     this.moons = [];
+    this.hover = false;
 
     return this;
 };
@@ -26,6 +27,9 @@ Planet.prototype.draw = function() {
     context.lineWidth = 1;
     context.fillStyle="#1E1E1E";
     context.strokeStyle = 'rgba(150, 200, 255, 0.3)';
+    if (this.hover) {
+        context.strokeStyle = 'rgba(255, 200, 255, 0.3)';
+    }
     context.beginPath();
     context.arc(planetPosition.x, planetPosition.y, radius, 0, Math.PI * 2, true);
     context.fill();
