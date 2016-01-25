@@ -3,6 +3,7 @@ var Player = function(id, name){
 	this.name = name;
 	this.ships = [];
 	this.planets = [];
+	this.authToken = null;
 
 	return this;
 }

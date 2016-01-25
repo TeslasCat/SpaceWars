@@ -49,6 +49,7 @@ conn.socket.on('connect', function() {
         /* TODO: AUTH The User */
         conn.socket.send(conn.formatMessage(conn.MESSAGE_TYPE_AUTHENTICATE, { u: "user_a", p: "open-the-gate"} ));
     }else {
+        /* TODO: If connection to server is lost or server is restarted, re-auth with current user or delete this instance and load again. */
         console.log(game.the_player);
     }
 
@@ -94,13 +95,15 @@ conn.socket.on('connect', function() {
                     game.the_player = new Player(conn.socket.id, data.n);
 
                     console.log("You're authed as: ", data.n);
-                    console.log("These are your ships: ");
+                    
                     for(var i in data.s){
-                        console.log(data.s[i].name);
+                        console.log(data.s[i])
+                        var ship = new Ship(data.s[i].name, data.s[i].plot);
+                        game.ships.push(ship);
                     }
                     break;
                 case conn.MESSAGE_TYPE_AUTHENTICATION_FAILED:
-                    console.log("Failed to Auth palyer. Check username and password.");
+                    console.log("Failed to Auth player. Check username and password.");
                     break;
             }
         }
