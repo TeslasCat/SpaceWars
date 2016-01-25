@@ -92,12 +92,11 @@ conn.socket.on('connect', function() {
                     game.players.splice(game.players.indexOf(p), 1);
                     break;
                 case conn.MESSAGE_TYPE_AUTHENTICATION_PASSED:
-                    game.the_player = new Player(conn.socket.id, data.n);
+                    game.the_player = new Player(conn.socket.id, data.n, data.s, data.t);
 
                     console.log("You're authed as: ", data.n);
                     
                     for(var i in data.s){
-                        console.log(data.s[i])
                         var ship = new Ship(data.s[i].name, data.s[i].plot);
                         game.ships.push(ship);
                     }

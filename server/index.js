@@ -139,11 +139,13 @@ function sendPing(client) {
 function authPlayer(socket, data) {
 	db.find({ $and: [{user_name: data.u }, {password: data.p}] }, function auth_user(err, res) {
 		if (res.length === 1) {
-			var newPlayerData = {i: socket.id, n: res[0].name, s: res[0].ships}
-			socket.send(formatMessage(MESSAGE_TYPE_AUTHENTICATION_PASSED, newPlayerData ));
-			util.log(util.format("AUTH SUCCESS: ", data.u, socket.id));
+			require('crypto').randomBytes(48, function(ex, buf) {
+				var newPlayerData = {i: socket.id, n: names.first() + " " + names.last(), s: res[0].ships, t: buf.toString('hex')}
+				socket.send(formatMessage(MESSAGE_TYPE_AUTHENTICATION_PASSED, newPlayerData ));
+				util.log(util.format("AUTH SUCCESS: ", data.u, socket.id));
 
-			newPlayer(socket, newPlayerData);
+				newPlayer(socket, newPlayerData);
+			});
 
 		} else {
 			socket.send(formatMessage(MESSAGE_TYPE_AUTHENTICATION_FAILED));
@@ -153,11 +155,7 @@ function authPlayer(socket, data) {
 }
 
 function newPlayer(socket, data) {
-	var player = new Player(socket.id, data.n);
-	require('crypto').randomBytes(48, function(ex, buf) {
-		player.authToken = buf.toString('hex');
-	});
-	player.ships = data.s;
+	var player = new Player(socket.id, data.n, data.s, data.t);
 	players.push(player);
 
 	// Broadcast new player to all clients, excluding the client.
