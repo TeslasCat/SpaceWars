@@ -2,6 +2,9 @@
 
 process.title = "SpaceWars";
 
+var Datastore = require('nedb')
+var db = new Datastore({ filename: 'datatore_one', autoload: true });
+
 var io = require('socket.io')();
 var util = require("util");
 
@@ -22,12 +25,12 @@ var BISON = require("./bison");
 var MESSAGE_TYPE_PING = 1;
 var MESSAGE_TYPE_UPDATE_PING = 2;
 var MESSAGE_TYPE_NEW_PLAYER = 3;
-var MESSAGE_TYPE_SET_COLOUR = 4;
-var MESSAGE_TYPE_UPDATE_PLAYER = 5;
+// var MESSAGE_TYPE_SET_COLOUR = 4;
+// var MESSAGE_TYPE_UPDATE_PLAYER = 5;
 var MESSAGE_TYPE_REMOVE_PLAYER = 6;
-// var MESSAGE_TYPE_AUTHENTICATION_PASSED = 7;
-// var MESSAGE_TYPE_AUTHENTICATION_FAILED = 8;
-// var MESSAGE_TYPE_AUTHENTICATE = 9;
+var MESSAGE_TYPE_AUTHENTICATION_PASSED = 7;
+var MESSAGE_TYPE_AUTHENTICATION_FAILED = 8;
+var MESSAGE_TYPE_AUTHENTICATE = 9;
 var MESSAGE_TYPE_ERROR = 10;
 // var MESSAGE_TYPE_ADD_BULLET = 11;
 // var MESSAGE_TYPE_UPDATE_BULLET = 12;
@@ -36,7 +39,17 @@ var MESSAGE_TYPE_ERROR = 10;
 // var MESSAGE_TYPE_UPDATE_KILLS = 15;
 // var MESSAGE_TYPE_REVIVE_PLAYER = 16;
 
+/* Setup example users */
+
+
+// db.insert([{user_name: "user_a", password: "open-the-gate", x: "10", y: "15", name: "Pete"}], function (err, newDocs) {
+//   // Two documents were inserted in the database
+//   // newDocs is an array with these documents, augmented with their _id
+// });
+
 players = [];
+ships   = [];
+planets = [];
 
 io.serveClient(false);
 io.listen(8000);
@@ -46,19 +59,18 @@ var serverStart = new Date().getTime();
 
 initPlayerActivityMonitor(players, io);
 
-io.on('connection', function(client) {
-	util.log("CONNECT: ", client.id);
+io.on('connection', function on_connection(client) {
+	util.log("CONNECT: " + client.id);
 
-    client.on('message', function(msg) {
+    client.on('message', function handle_message(msg) {
 		var data = BISON.decode(msg);
 		if (data.type) {
 			switch (data.type) {
 				case MESSAGE_TYPE_PING:
-					var player = players[indexOfByPlayerId(client.id)];
-					// var player = playerById[client.id];
-					
-					if (player == null) {
-						util.log("ERROR: Unable to find player to ping: ", client.id);
+					var player = getPlayerBySocketID(client.id);
+
+					if (!player) {
+						util.log(util.format("ERROR: Unable to find player to ping: ", client.id));
 						break;
 					};
 					
@@ -73,34 +85,47 @@ io.on('connection', function(client) {
 					client.send(formatMessage(MESSAGE_TYPE_PING, {i: player.id, n: player.name, p: ping}));
 					
 					// Broadcast ping to other players
-					io.send(formatMessage(MESSAGE_TYPE_UPDATE_PING, {i: client.id, p: ping}));
+					// io.send(formatMessage(MESSAGE_TYPE_UPDATE_PING, {i: client.id, p: ping}));
 					
+					// ERROR: Broadcasting Players
+
 					// Log ping to server after every 10 seconds
 					if ((newTimestamp-serverStart) % 10000 <= 3000) {
-						util.log("PING [{1} - {0}]: {2}".format([client.id, player.name, ping]));
+						util.log(util.format("PING [%s - %s]: %s", client.id, player.name, ping));
 					};
 					
 					// Request a new ping
 					sendPing(client);
 					break;
+				case MESSAGE_TYPE_AUTHENTICATE:
+					db.find({ $and: [{user_name: data.u }, {password: data.p}] }, function auth_user(err, res) {
+						if (res.length === 1) {
+							client.send(formatMessage(MESSAGE_TYPE_AUTHENTICATION_PASSED, {i: client.id, x: res[0].x, y: res[0].y, n: res[0].name} ));
+							util.log(util.format("AUTH SUCCESS: ", data.u, client.id));
+						} else {
+							client.send(formatMessage(MESSAGE_TYPE_AUTHENTICATION_FAILED));
+							util.log(util.format("AUTH FAIL: ", data.u, client.id));
+						};
+					});
+					// util.log(d)
 				case MESSAGE_TYPE_NEW_PLAYER:
 					// Setup new player.
-					var player = new Player(client.id, data.x, data.y, names.first());
+					var player = new Player(client.id, data.n);
 					players.push(player);
 
-					// Broadcast new player to all clients, including the new one.
-					io.send(formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: player.id, x: player.x, y: player.y, n: player.name}));
+					// Broadcast new player to all clients, excluding the client.
+					broadcast_excluded(client.id, formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: player.id, n: player.name}));
 
 					// Tell the new player about existing players
 					for(var i in players) {
-						// Make sure not to tell the client about it's self.
+						// Make sure NOT to tell the client about it's self.
 						if(players[i].id == client.id)
 							continue;
-						client.send(formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: players[i].id, x: players[i].x, y: players[i].y, n: players[i].name}));
+						client.send(formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: players[i].id, n: players[i].name}));
 					}
 
 					sendPing(client);
-					util.log("NEW_PLAYER: ", player.name, player.id);
+					util.log(util.format("NEW_PLAYER: ", player.name, player.id));
 					break;
 			};
 		} else {
@@ -109,24 +134,20 @@ io.on('connection', function(client) {
     });
 
 	client.on("disconnect", function() {
-		var removePlayer = playerById(this.id);
+		var removePlayer = getPlayerBySocketID(this.id);
 
-		// Player not found
 		if (!removePlayer) {
 			util.log("Player not found: ", this.id);
 			return;
 		};
-
-		util.log("Player has disconnected: ", removePlayer.name, this.id);
-
-		// Remove player from players array
+		
+		util.log(util.format("Player has disconnected: ", removePlayer.name, this.id));
 		players.splice(players.indexOf(removePlayer), 1);
-
 		// Broadcast removed player to connected socket clients
-		io.send(formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: client.id}));
+		io.send(formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: this.id}));
+
 	});
 });
-
 
 function initPlayerActivityMonitor(players, socket) {
 	setInterval(function() {		
@@ -136,8 +157,7 @@ function initPlayerActivityMonitor(players, socket) {
 				continue;
 
 			if(p.age > 3){
-				// io.send(formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: p.id}));
-				util.log("CLOSE [TIME OUT]: ", p.name, p.id);
+				util.log(util.format("CLOSE [TIME OUT]: ", p.name, p.id));
 
 				for(var id in io.sockets.sockets){
 					if(p.id == io.sockets.sockets[id].id) {
@@ -145,89 +165,47 @@ function initPlayerActivityMonitor(players, socket) {
 					}
 				}
 
-				// No Need to remove from player list as it will be handled by 'disconnect'.
-				// players.splice(indexOfByPlayerId(p.id), 1);
-				// players.splice(players.indexOf(playerById[p.id]), 1);
 				continue;
 			}
 			p.age += 1;
-			// util.log("Increase player age: ", p.id);
 		}
-	}, 1000);
 
-	// setInterval(function() {
-	// 	players.forEach(function (p, i) {
-	// 		util.log("{0} {1} {2}".format([p.name, p.id, p.age]));
-	// 	});
-	// }, 2000);
+		// var p = "PLAYERS: ";
+		// for(var i in players){
+		// 	p += players[i].id + " "
+		// }
+		util.log(util.format("Player Count: ", players.length))
+
+	}, 5000);
 };
 
 /* 
  * Helper Functions 
  */
 function sendPing(client) {
-	setTimeout(function() {
+	setTimeout(function ping_client() {
 		var timestamp = new Date().getTime();
 		client.send(formatMessage(MESSAGE_TYPE_PING, {t: timestamp.toString()}));
-		// util.log("PING: ", client.id, timestamp.toString());
 	}, 3000);
 };
 
-/**
- * Find player by the player name
- *
- * @param {String} name Name of player
- * @returns Player object
- * @type Player
- */
-// function playerByName(name) {
-// 	for (var i = 0; i < players.length; i++) {
-// 		if (players[i].name == name)
-// 			return players[i];
-// 	};	
-// };
 
-/**
- * Find player by the player id
- *
- * @param {Number} id Id of player
- * @returns Player object
- * @type Player
- */
-function playerById(id) {
+function getPlayerBySocketID(id) {
+    for(var p in players){
+        if(players[p].id == id)
+            return players[p];
+    };
+    return null;
+}
 
-	// players.forEach(function (p, i) {
-	// 	util.log(p.id, p.name);
-	// 	if(p.id == id){
-	// 		return i;
-	// 	};
-	// });
-
-	for(var i in players){
-		if(players[i].id == id){
-			return players[i];
-		};
-	};
-	return null;
-};
-
-/**
- * Find index of player by the player id
- *
- * @param {Number} id Id of player
- * @returns Index of player
- * @type Number
- */
-function indexOfByPlayerId(id) {
-
-	for (var i in players) {
-		if(players[i].id == id) {
-			return i;
-		};
-	};
-
-	return null;
-};
+function broadcast_excluded(exclude, msg){
+	for(var i in io.sockets.sockets){
+		if(exclude != io.sockets.sockets[i].id) {
+			io.sockets.sockets[i].send(msg);
+			// util.log(io.sockets.sockets[i])
+		}
+	}
+}
 
 /**
  * Format message using game protocols
@@ -248,22 +226,3 @@ function formatMessage(type, args) {
 	
 	return BISON.encode(msg);
 };
-
-String.prototype.format = function (args) {
-	var str = this;
-	return str.replace(String.prototype.format.regex, function(item) {
-		var intVal = parseInt(item.substring(1, item.length - 1));
-		var replace;
-		if (intVal >= 0) {
-			replace = args[intVal];
-		} else if (intVal === -1) {
-			replace = "{";
-		} else if (intVal === -2) {
-			replace = "}";
-		} else {
-			replace = "";
-		}
-		return replace;
-	});
-};
-String.prototype.format.regex = new RegExp("{-?[0-9]+}", "g");

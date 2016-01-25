@@ -7,4 +7,3 @@ var Player = function(id, name){
 	return this;
 }
 
-module.exports = Player;

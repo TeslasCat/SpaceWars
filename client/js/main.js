@@ -23,6 +23,8 @@ $(function() {
     registerMouseListeners();
     registerCommands();
 
+    game.players = [];
+
     // Add ships
     game.ships = [];
     var ship = new Ship('FR00001', {x: 0, y: 0});
