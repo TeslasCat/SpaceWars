@@ -15,18 +15,121 @@ body {
 body {
     background: #1E1E1E;
     overflow: hidden;
+    position: relative;
 }
 
+a {
+    color: #546E63;
+    text-decoration: none;
+}
+
+
+input[type=text],
+input[type=password] {
+    text-align: right;
+    border: 0;
+    background: none;
+    padding: 0;
+}
+
+#login {
+    position: absolute;
+    width: 300px;
+    left: 50%;
+    top: 100px;
+    margin-left: -150px;
+    opacity: 1;
+    transition: 0.6s;
+}
+
+#login.hidden {
+    opacity: 0;
+}
+
+#login .logo {
+    font-family: 'Aldrich', sans-serif;
+    color: #A23F42;
+    text-align: center;
+    margin-bottom: 65px;
+    font-size: 35px;
+    letter-spacing: 8px;
+}
+
+#login .input {
+    font-size: 0.8em;
+    line-height: 25px;
+    color: #546E63;
+    text-shadow: 0 0 5px #32382E;
+    border-bottom: 1px solid #32382E;
+    width: 100%;
+    height: 30px;
+    position: relative;
+    margin-bottom: 40px;
+    letter-spacing: 1px;
+}
+
+#login .input span {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 24px;
+    background: #1E1E1E;
+    z-index: 1;
+    padding-right: 5px;
+    text-transform: uppercase;
+}
+
+#login .input input {
+    height: 24px;
+    width: 100%;
+    letter-spacing: 1px;
+    text-shadow: 0 0 5px #32382E;
+}
+
+#login a.button {
+    color: #CCC3A3;
+    display: block;
+    text-align: center;
+    width: 100%;
+    border: 1px solid #546E63;
+    border-radius: 3px;
+    padding: 10px 0;
+    font-size: 0.8em;
+    transition: 0.3s;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+#login a.button:hover {
+    box-shadow: 0 0 5px #32382E;
+}
+
+#login a:not(.button) {
+    display: block;
+    text-align: center; 
+    font-size: 0.8em;
+    line-height: 36px;
+    transition: 0.3s;
+}
+
+#login a:not(.button):hover {
+    text-shadow: 0 0 5px #32382E;
+}
 
 
 #sidebar {
     width: 300px;
     position: absolute;
     top: 0;
-    right: -300px;
+    right: -325px;
     bottom: 25px;
     background: rgba(15, 20, 26, 0.5);
     transition: 0.5s;
+}
+
+.playing #sidebar {
+    right: -300px;
 }
 
 #sidebar.sidebar--open {
@@ -122,6 +225,12 @@ body {
     width: 100%;
     position: absolute;
     bottom: 0;
+    opacity: 0;
+    transition: 2s;
+}
+
+.playing #commands {
+    opacity: 1;
 }
 
 #commands .commands-history {

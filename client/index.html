@@ -4,11 +4,26 @@
         <title>Space Wars</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
 
+        <link href='https://fonts.googleapis.com/css?family=Aldrich' rel='stylesheet' type='text/css'>
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
         <link rel='stylesheet' href='css/normalize.css'/>
         <link rel='stylesheet' href='css/main.css'/>
     </head>
     <body>
+        <div id='login'>
+            <div class='logo'>SpaceWars</div>
+            <div class='input'>
+                <span>CAPTAIN ID</span>
+                <input type="text" name="username" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+            </div>
+            <div class='input'>
+                <span>Access code</span>
+                <input type="password" name="password" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+            </div>
+            <a href='#' class='button'>Authenticate</a>
+            <a href='#'>New recruit?</a>
+        </div>
+
         <div id='game'>
             <canvas id='gameCanvas'>
 
