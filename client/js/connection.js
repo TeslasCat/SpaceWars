@@ -61,6 +61,7 @@ conn.socket.on('connect', function() {
                 case conn.MESSAGE_TYPE_NEW_PLAYER:
                     var player = new Player(data.i, data.n);
                     game.players.push(player);
+                    game.ui.showInfo(player);
                     break;
                 case conn.MESSAGE_TYPE_REMOVE_PLAYER:
                     var p = conn.getPlayerBySocketID(data.i);

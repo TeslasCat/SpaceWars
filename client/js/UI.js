@@ -61,6 +61,14 @@ UI.prototype.showInfo = function(object) {
             'Interests: unknown',
             'Geology: unknown'
         ];
+    } else if (object instanceof Player) {
+        $item.data('type', 'player');
+
+        info = [
+            'ID: ' + object.id,
+            'Ships: ' + object.ships,
+            'Planets: ' + object.planets,
+        ];
     }
 
     $('<h3>', {text: object.name}).appendTo($item);
