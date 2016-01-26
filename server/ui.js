@@ -26,7 +26,7 @@ UI.prototype.renderLayout = function() {
     var self = this;
 
     // Footer
-    this.elements['nowPlaying'] = blessed.Box({
+    this.elements['footer'] = blessed.Box({
         content: "", 
         tags: true,
         align: 'left',
@@ -40,7 +40,7 @@ UI.prototype.renderLayout = function() {
             fg: this.colors.highlight.fg
         }
     });
-    this.screen.append(this.elements['nowPlaying']);
+    this.screen.append(this.elements['footer']);
 
     // Main Window
     this.elements['main'] = blessed.Box({
@@ -82,7 +82,7 @@ UI.prototype.updatePlayerList = function(players){
     for(var i in players){
         // make the screens say the right things
         this.elements['sidebar'].insertBottom(
-                util.format("%s", players[i].name));    
+                util.format("%s [%s]", players[i].name, players[i].ping));
     }
 
 	// Finally render to the screen.
@@ -99,6 +99,15 @@ UI.prototype.log = function(str){
     this.screen.render();
 }
 
+UI.prototype.setFooter = function(str){
+    var self = this;
+    
+    // make the screens say the right things
+    this.elements['footer'].setContent(str);
+
+    // Finally render to the screen.
+    this.screen.render();
+}
 
 
 module.exports = UI;

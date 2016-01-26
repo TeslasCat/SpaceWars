@@ -52,7 +52,7 @@ planets = [];
 
 io.serveClient(false);
 io.listen(8000);
-ui.log("Server listening on 8000");
+ui.setFooter("Server listening on 8000");
 var serverStart = new Date().getTime();
 
 var server = {
@@ -68,26 +68,17 @@ var server = {
 			return false;
 		};
 		
-		player.age = 0; // Player is active
-		
 		var newTimestamp = new Date().getTime();
-		// ui.log("Round trip: "+(newTimestamp-data.ts)+"ms");
 		var ping = newTimestamp-data.t;
-		// ui.log(ping)
+		player.age = 0;
+		player.ping = ping;
 		
 		// Send ping back to player
 		socket.send(server.formatMessage(MESSAGE_TYPE_PING, {i: player.id, n: player.name, p: ping}));
 		
 		// Broadcast ping to other players
-		// io.send(server.formatMessage(MESSAGE_TYPE_UPDATE_PING, {i: socket.id, p: ping}));
-		
-		// ERROR: Broadcasting Players
+		server.broadcast_excluded(socket.id, server.formatMessage(MESSAGE_TYPE_UPDATE_PING, {i: socket.id, p: ping}));
 
-		// Log ping to server after every 10 seconds
-		if ((newTimestamp-serverStart) % 10000 <= 3000) {
-			ui.log(util.format("PING [%s - %s]: %s", socket.id, player.name, ping));
-		};
-		
 		// Request a new ping
 		server.sendPing(socket);
 		return true;

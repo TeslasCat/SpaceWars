@@ -3,7 +3,7 @@ var conn = {
      * Message protocols
      */
     MESSAGE_TYPE_PING : 1,
-    // MESSAGE_TYPE_UPDATE_PING : 2,
+    MESSAGE_TYPE_UPDATE_PING : 2,
     MESSAGE_TYPE_NEW_PLAYER : 3,
     // MESSAGE_TYPE_SET_COLOUR : 4,
     MESSAGE_TYPE_UPDATE_PLAYER : 5,
@@ -67,7 +67,10 @@ conn.socket.on('connect', function() {
                     }
                     break;
                 case conn.MESSAGE_TYPE_UPDATE_PING:
-                    console.log('Update ping client: '+data.i+' ping: '+data.p);
+                    var p = conn.getPlayerBySocketID(data.i)
+                    if(p){
+                        p.ping = data.p;
+                    }
                     break;
                 case conn.MESSAGE_TYPE_NEW_PLAYER:
                     if(data.i == conn.socket.id){
