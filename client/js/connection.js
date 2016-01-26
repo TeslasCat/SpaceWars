@@ -3,7 +3,7 @@ var conn = {
      * Message protocols
      */
     MESSAGE_TYPE_PING : 1,
-    // MESSAGE_TYPE_UPDATE_PING : 2,
+    MESSAGE_TYPE_UPDATE_PING : 2,
     MESSAGE_TYPE_NEW_PLAYER : 3,
     // MESSAGE_TYPE_SET_COLOUR : 4,
     MESSAGE_TYPE_UPDATE_PLAYER : 5,
@@ -49,6 +49,7 @@ conn.socket.on('connect', function() {
         /* TODO: AUTH The User */
         conn.socket.send(conn.formatMessage(conn.MESSAGE_TYPE_AUTHENTICATE, { u: "user_a", p: "open-the-gate"} ));
     }else {
+        /* TODO: If connection to server is lost or server is restarted, re-auth with current user or delete this instance and load again. */
         console.log(game.the_player);
     }
 
@@ -66,7 +67,10 @@ conn.socket.on('connect', function() {
                     }
                     break;
                 case conn.MESSAGE_TYPE_UPDATE_PING:
-                    console.log('Update ping client: '+data.i+' ping: '+data.p);
+                    var p = conn.getPlayerBySocketID(data.i)
+                    if(p){
+                        p.ping = data.p;
+                    }
                     break;
                 case conn.MESSAGE_TYPE_NEW_PLAYER:
                     if(data.i == conn.socket.id){
@@ -74,7 +78,10 @@ conn.socket.on('connect', function() {
                         break;
                     }
 
-                    var player = new Player(data.i, data.n);
+                    var player = new Player(data.i, data.n, data.s);
+                    // TODO: Add player's ships to game, make the distinction between player's ships.
+                    console.log(player.ships)
+                    
                     game.players.push(player);
 
                     // TODO: Fix this up.
@@ -91,16 +98,17 @@ conn.socket.on('connect', function() {
                     game.players.splice(game.players.indexOf(p), 1);
                     break;
                 case conn.MESSAGE_TYPE_AUTHENTICATION_PASSED:
-                    game.the_player = new Player(conn.socket.id, data.n);
+                    game.the_player = new Player(conn.socket.id, data.n, data.s, data.t);
 
                     console.log("You're authed as: ", data.n);
-                    console.log("These are your ships: ");
+                    
                     for(var i in data.s){
-                        console.log(data.s[i].name);
+                        var ship = new Ship(data.s[i].name, data.s[i].plot);
+                        game.ships.push(ship);
                     }
                     break;
                 case conn.MESSAGE_TYPE_AUTHENTICATION_FAILED:
-                    console.log("Failed to Auth palyer. Check username and password.");
+                    console.log("Failed to Auth player. Check username and password.");
                     break;
             }
         }
