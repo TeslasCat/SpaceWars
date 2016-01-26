@@ -14,7 +14,6 @@ ui = new UI();
 var names = require('./random-name');
 
 /* Some of our Stuff */
-var server = require("./server")
 var Player = require("./Player");
 var BISON = require("./bison");
 var Ship = require("./ship");

@@ -11,8 +11,6 @@ var UI = function() {
       smartCSR: true
     });
 
-    this.screen.title = 'Grooveshare';
-
     this.renderLayout();
 
     // Quit on Escape, q, or Control-C.
