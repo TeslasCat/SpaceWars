@@ -13,7 +13,7 @@ var UI = function() {
 
     this.renderLayout();
 
-    // Quit on Escape, q, or Control-C.
+    // Quit on Control-C.
     this.screen.key(['C-c'], function(ch, key) {
       return process.exit(0);
     });
@@ -53,7 +53,9 @@ UI.prototype.renderLayout = function() {
       width: '70%',
       height: '98%',
       top: 0,
-      left: 0
+      left: 0,
+      alwaysScroll: true,
+      scrollable: true
     });
     this.screen.append(this.elements['main']);
 
@@ -94,6 +96,7 @@ UI.prototype.log = function(str){
     
     // make the screens say the right things
     this.elements['main'].insertBottom(str);
+    this.elements['main'].scroll(10);
 
     // Finally render to the screen.
     this.screen.render();

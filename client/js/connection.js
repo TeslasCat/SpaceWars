@@ -15,7 +15,7 @@ var conn = {
     /**
      * Init Connection to Server.
      */ 
-    socket : io("http://localhost:8000"),
+    socket : io("/"),
 
     /**
      * Format Messages using BISON encoding.
@@ -80,7 +80,7 @@ conn.socket.on('connect', function() {
 
                     var player = new Player(data.i, data.n, data.s);
                     // TODO: Add player's ships to game, make the distinction between player's ships.
-                    console.log(player.ships)
+                    // console.log(player.ships)
                     
                     game.players.push(player);
 
@@ -94,13 +94,13 @@ conn.socket.on('connect', function() {
                         break;
                     }
 
-                    console.log("Player has disconnected: ", p.name, p.id);
+                    console.log("Player has disconnected: %s %s", p.name, p.id);
                     game.players.splice(game.players.indexOf(p), 1);
                     break;
                 case conn.MESSAGE_TYPE_AUTHENTICATION_PASSED:
                     game.the_player = new Player(conn.socket.id, data.n, data.s, data.t);
 
-                    console.log("You're authed as: ", data.n);
+                    console.log("You're authed as: %s", data.n);
                     
                     for(var i in data.s){
                         var ship = new Ship(data.s[i].name, data.s[i].plot);
