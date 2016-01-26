@@ -8,14 +8,10 @@ var db = new Datastore({ filename: 'data/datatore_one', autoload: true });
 var io = require('socket.io')();
 var util = require("util");
 
-/* 
-var config = require('config');
-var colors = require('colors');
-*/
-
 var names = require('./random-name');
 
 /* Some of our Stuff */
+var server = require("./server")
 var Player = require("./Player");
 var BISON = require("./bison");
 var Ship = require("./ship");
@@ -57,144 +53,124 @@ io.listen(8000);
 util.log("Server listening on 8000");
 var serverStart = new Date().getTime();
 
-initPlayerActivityMonitor(players, io);
+var server = {
+	
+	/**
+	 *
+	 */
+	pingPlayer: function(socket, data) {
+		var player = server.getPlayerBySocketID(socket.id);
 
-io.on('connection', function onConnection(client) {
-	util.log("CONNECT: " + client.id);
-
-    client.on('message', function handleMessage(msg) {
-		var data = BISON.decode(msg);
-		if (data.type) {
-			switch (data.type) {
-				case MESSAGE_TYPE_PING:
-					pingPlayer(client, data);
-					break;
-				case MESSAGE_TYPE_AUTHENTICATE:
-					authPlayer(client, data);
-					break;
-			};
-		} else {
-			util.log("Invalid Message protocol");
-		};
-    });
-
-	client.on("disconnect", function onDisconnect() {
-		var removePlayer = server.getPlayerBySocketID(this.id);
-
-		if (!removePlayer) {
-			util.log("Player not found: ", this.id);
-			return;
+		if (!player) {
+			util.log(util.format("ERROR: Unable to find player to ping: ", socket.id));
+			return false;
 		};
 		
-		util.log(util.format("Player has disconnected: ", removePlayer.name, this.id));
-		players.splice(players.indexOf(removePlayer), 1);
-		// Broadcast removed player to connected socket clients
-		io.send(server.formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: this.id}));
-	});
-});
+		player.age = 0; // Player is active
+		
+		var newTimestamp = new Date().getTime();
+		// util.log("Round trip: "+(newTimestamp-data.ts)+"ms");
+		var ping = newTimestamp-data.t;
+		// util.log(ping)
+		
+		// Send ping back to player
+		socket.send(server.formatMessage(MESSAGE_TYPE_PING, {i: player.id, n: player.name, p: ping}));
+		
+		// Broadcast ping to other players
+		// io.send(server.formatMessage(MESSAGE_TYPE_UPDATE_PING, {i: socket.id, p: ping}));
+		
+		// ERROR: Broadcasting Players
 
-function pingPlayer(socket, data) {
-	var player = server.getPlayerBySocketID(socket.id);
-
-	if (!player) {
-		util.log(util.format("ERROR: Unable to find player to ping: ", socket.id));
-		return false;
-	};
-	
-	player.age = 0; // Player is active
-	
-	var newTimestamp = new Date().getTime();
-	// util.log("Round trip: "+(newTimestamp-data.ts)+"ms");
-	var ping = newTimestamp-data.t;
-	// util.log(ping)
-	
-	// Send ping back to player
-	socket.send(server.formatMessage(MESSAGE_TYPE_PING, {i: player.id, n: player.name, p: ping}));
-	
-	// Broadcast ping to other players
-	// io.send(server.formatMessage(MESSAGE_TYPE_UPDATE_PING, {i: socket.id, p: ping}));
-	
-	// ERROR: Broadcasting Players
-
-	// Log ping to server after every 10 seconds
-	if ((newTimestamp-serverStart) % 10000 <= 3000) {
-		util.log(util.format("PING [%s - %s]: %s", socket.id, player.name, ping));
-	};
-	
-	// Request a new ping
-	sendPing(socket);
-	return true;
-}
-
-function sendPing(client) {
-	setTimeout(function ping_client() {
-		var timestamp = new Date().getTime();
-		client.send(server.formatMessage(MESSAGE_TYPE_PING, {t: timestamp.toString()}));
-	}, 3000);
-};
-
-function authPlayer(socket, data) {
-	db.find({ $and: [{user_name: data.u }, {password: data.p}] }, function auth_user(err, res) {
-		if (res.length === 1) {
-			require('crypto').randomBytes(48, function(ex, buf) {
-				var newPlayerData = {i: socket.id, n: names.first() + " " + names.last(), s: res[0].ships, t: buf.toString('hex')}
-				socket.send(server.formatMessage(MESSAGE_TYPE_AUTHENTICATION_PASSED, newPlayerData ));
-				util.log(util.format("AUTH SUCCESS: ", data.u, socket.id));
-
-				newPlayer(socket, newPlayerData);
-			});
-
-		} else {
-			socket.send(server.formatMessage(MESSAGE_TYPE_AUTHENTICATION_FAILED));
-			util.log(util.format("AUTH FAIL: ", data.u, socket.id));
+		// Log ping to server after every 10 seconds
+		if ((newTimestamp-serverStart) % 10000 <= 3000) {
+			util.log(util.format("PING [%s - %s]: %s", socket.id, player.name, ping));
 		};
-	});
-}
+		
+		// Request a new ping
+		server.sendPing(socket);
+		return true;
+	},
 
-function newPlayer(socket, data) {
-	var player = new Player(socket.id, data.n, data.s, data.t);
-	players.push(player);
+	/**
+	 *
+	 */
+	sendPing: function(client) {
+		setTimeout(function ping_client() {
+			var timestamp = new Date().getTime();
+			client.send(server.formatMessage(MESSAGE_TYPE_PING, {t: timestamp.toString()}));
+		}, 3000);
+	},
 
-	// Broadcast new player to all clients, excluding the client.
-	server.broadcast_excluded(socket.id, server.formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: player.id, n: player.name, s: player.ships}));
+	/**
+	 *
+	 */
+	authPlayer: function(socket, data) {
+		db.find({ $and: [{user_name: data.u }, {password: data.p}] }, function auth_user(err, res) {
+			if (res.length === 1) {
+				require('crypto').randomBytes(48, function(ex, buf) {
+					var newPlayerData = {i: socket.id, n: names.first() + " " + names.last(), s: res[0].ships, t: buf.toString('hex')}
+					socket.send(server.formatMessage(MESSAGE_TYPE_AUTHENTICATION_PASSED, newPlayerData ));
+					util.log(util.format("AUTH SUCCESS: ", data.u, socket.id));
 
-	// Tell the new player about existing players
-	for(var i in players) {
-		// Make sure NOT to tell the client about it's self.
-		if(players[i].id == socket.id)
-			continue;
-		socket.send(server.formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: players[i].id, n: players[i].name, s: players[i].ships}));
-	}
+					server.newPlayer(socket, newPlayerData);
+				});
 
-	sendPing(socket);
-	util.log(util.format("NEW_PLAYER: ", player.name, player.id));
-}
+			} else {
+				socket.send(server.formatMessage(MESSAGE_TYPE_AUTHENTICATION_FAILED));
+				util.log(util.format("AUTH FAIL: ", data.u, socket.id));
+			};
+		});
+	},
 
-function initPlayerActivityMonitor(players, socket) {
-	// Tell the ne
-	setInterval(function() {		
+	/**
+	 *
+	 */
+	newPlayer: function(socket, data) {
+		var player = new Player(socket.id, data.n, data.s, data.t);
+		players.push(player);
+
+		// Broadcast new player to all clients, excluding the client.
+		server.broadcast_excluded(socket.id, server.formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: player.id, n: player.name, s: player.ships}));
+
+		// Tell the new player about existing players
 		for(var i in players) {
-			var p = players[i];
-			if(p == null)
+			// Make sure NOT to tell the client about it's self.
+			if(players[i].id == socket.id)
 				continue;
-
-			if(p.age > 3){
-				util.log(util.format("CLOSE [TIME OUT]: ", p.name, p.id));
-
-				for(var id in io.sockets.sockets){
-					if(p.id == io.sockets.sockets[id].id) {
-						io.sockets.sockets[id].disconnect();
-					}
-				}
-
-				continue;
-			}
-			p.age += 1;
+			socket.send(server.formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: players[i].id, n: players[i].name, s: players[i].ships}));
 		}
-	}, 5000);
-};
 
-var server = {
+		server.sendPing(socket);
+		util.log(util.format("NEW_PLAYER: ", player.name, player.id));
+	},
+
+	/**
+	 *
+	 */
+	initPlayerActivityMonitor: function(players, socket) {
+		// Tell the ne
+		setInterval(function() {		
+			for(var i in players) {
+				var p = players[i];
+				if(p == null)
+					continue;
+
+				if(p.age > 3){
+					util.log(util.format("CLOSE [TIME OUT]: ", p.name, p.id));
+
+					for(var id in io.sockets.sockets){
+						if(p.id == io.sockets.sockets[id].id) {
+							io.sockets.sockets[id].disconnect();
+						}
+					}
+
+					continue;
+				}
+				p.age += 1;
+			}
+		}, 5000);
+	},
+
 	/**
 	 * Returns the player object which matches the the socket connection ID.
 	 *
@@ -245,3 +221,39 @@ var server = {
 		return BISON.encode(msg);
 	}
 };
+
+server.initPlayerActivityMonitor(players, io);
+
+io.on('connection', function onConnection(client) {
+	util.log("CONNECT: " + client.id);
+
+    client.on('message', function handleMessage(msg) {
+		var data = BISON.decode(msg);
+		if (data.type) {
+			switch (data.type) {
+				case MESSAGE_TYPE_PING:
+					server.pingPlayer(client, data);
+					break;
+				case MESSAGE_TYPE_AUTHENTICATE:
+					server.authPlayer(client, data);
+					break;
+			};
+		} else {
+			util.log("Invalid Message protocol");
+		};
+    });
+
+	client.on("disconnect", function onDisconnect() {
+		var removePlayer = server.getPlayerBySocketID(this.id);
+
+		if (!removePlayer) {
+			util.log("Player not found: ", this.id);
+			return;
+		};
+		
+		util.log(util.format("Player has disconnected: ", removePlayer.name, this.id));
+		players.splice(players.indexOf(removePlayer), 1);
+		// Broadcast removed player to connected socket clients
+		io.send(server.formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: this.id}));
+	});
+});
