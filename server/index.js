@@ -59,10 +59,10 @@ var serverStart = new Date().getTime();
 
 initPlayerActivityMonitor(players, io);
 
-io.on('connection', function on_connection(client) {
+io.on('connection', function onConnection(client) {
 	util.log("CONNECT: " + client.id);
 
-    client.on('message', function handle_message(msg) {
+    client.on('message', function handleMessage(msg) {
 		var data = BISON.decode(msg);
 		if (data.type) {
 			switch (data.type) {
@@ -72,17 +72,14 @@ io.on('connection', function on_connection(client) {
 				case MESSAGE_TYPE_AUTHENTICATE:
 					authPlayer(client, data);
 					break;
-				case MESSAGE_TYPE_NEW_PLAYER:
-					newPlayer(client, data);
-					break;
 			};
 		} else {
 			util.log("Invalid Message protocol");
 		};
     });
 
-	client.on("disconnect", function() {
-		var removePlayer = getPlayerBySocketID(this.id);
+	client.on("disconnect", function onDisconnect() {
+		var removePlayer = server.getPlayerBySocketID(this.id);
 
 		if (!removePlayer) {
 			util.log("Player not found: ", this.id);
@@ -92,12 +89,12 @@ io.on('connection', function on_connection(client) {
 		util.log(util.format("Player has disconnected: ", removePlayer.name, this.id));
 		players.splice(players.indexOf(removePlayer), 1);
 		// Broadcast removed player to connected socket clients
-		io.send(formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: this.id}));
+		io.send(server.formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: this.id}));
 	});
 });
 
 function pingPlayer(socket, data) {
-	var player = getPlayerBySocketID(socket.id);
+	var player = server.getPlayerBySocketID(socket.id);
 
 	if (!player) {
 		util.log(util.format("ERROR: Unable to find player to ping: ", socket.id));
@@ -112,10 +109,10 @@ function pingPlayer(socket, data) {
 	// util.log(ping)
 	
 	// Send ping back to player
-	socket.send(formatMessage(MESSAGE_TYPE_PING, {i: player.id, n: player.name, p: ping}));
+	socket.send(server.formatMessage(MESSAGE_TYPE_PING, {i: player.id, n: player.name, p: ping}));
 	
 	// Broadcast ping to other players
-	// io.send(formatMessage(MESSAGE_TYPE_UPDATE_PING, {i: socket.id, p: ping}));
+	// io.send(server.formatMessage(MESSAGE_TYPE_UPDATE_PING, {i: socket.id, p: ping}));
 	
 	// ERROR: Broadcasting Players
 
@@ -132,7 +129,7 @@ function pingPlayer(socket, data) {
 function sendPing(client) {
 	setTimeout(function ping_client() {
 		var timestamp = new Date().getTime();
-		client.send(formatMessage(MESSAGE_TYPE_PING, {t: timestamp.toString()}));
+		client.send(server.formatMessage(MESSAGE_TYPE_PING, {t: timestamp.toString()}));
 	}, 3000);
 };
 
@@ -141,14 +138,14 @@ function authPlayer(socket, data) {
 		if (res.length === 1) {
 			require('crypto').randomBytes(48, function(ex, buf) {
 				var newPlayerData = {i: socket.id, n: names.first() + " " + names.last(), s: res[0].ships, t: buf.toString('hex')}
-				socket.send(formatMessage(MESSAGE_TYPE_AUTHENTICATION_PASSED, newPlayerData ));
+				socket.send(server.formatMessage(MESSAGE_TYPE_AUTHENTICATION_PASSED, newPlayerData ));
 				util.log(util.format("AUTH SUCCESS: ", data.u, socket.id));
 
 				newPlayer(socket, newPlayerData);
 			});
 
 		} else {
-			socket.send(formatMessage(MESSAGE_TYPE_AUTHENTICATION_FAILED));
+			socket.send(server.formatMessage(MESSAGE_TYPE_AUTHENTICATION_FAILED));
 			util.log(util.format("AUTH FAIL: ", data.u, socket.id));
 		};
 	});
@@ -159,14 +156,14 @@ function newPlayer(socket, data) {
 	players.push(player);
 
 	// Broadcast new player to all clients, excluding the client.
-	broadcast_excluded(socket.id, formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: player.id, n: player.name, s: player.ships}));
+	server.broadcast_excluded(socket.id, server.formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: player.id, n: player.name, s: player.ships}));
 
 	// Tell the new player about existing players
 	for(var i in players) {
 		// Make sure NOT to tell the client about it's self.
 		if(players[i].id == socket.id)
 			continue;
-		socket.send(formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: players[i].id, n: players[i].name, s: players[i].ships}));
+		socket.send(server.formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: players[i].id, n: players[i].name, s: players[i].ships}));
 	}
 
 	sendPing(socket);
@@ -197,42 +194,54 @@ function initPlayerActivityMonitor(players, socket) {
 	}, 5000);
 };
 
-/* 
- * Helper Functions 
- */
-function getPlayerBySocketID(id) {
-    for(var p in players){
-        if(players[p].id == id)
-            return players[p];
-    };
-    return null;
-}
+var server = {
+	/**
+	 * Returns the player object which matches the the socket connection ID.
+	 *
+	 * @param {String} id Socket ID
+	 * @returns Player object
+	 * @type Player
+	 */
+	getPlayerBySocketID: function(id) {
+	    for(var p in players){
+	        if(players[p].id == id)
+	            return players[p];
+	    };
+	    return null;
+	},
 
-function broadcast_excluded(exclude, msg){
-	for(var i in io.sockets.sockets){
-		if(exclude != io.sockets.sockets[i].id) {
-			io.sockets.sockets[i].send(msg);
-			// util.log(io.sockets.sockets[i])
+	/**
+	 * Sends message to all connections excluding listed.
+	 *
+	 * @param {String} exclude Socket ID to exclude.
+	 * @param {String} msg Formatted message encoded with BiSON to send to all conenctions.
+	 * @returns Void
+	 */
+	broadcast_excluded: function(exclude, msg){
+		for(var i in io.sockets.sockets){
+			if(exclude != io.sockets.sockets[i].id) {
+				io.sockets.sockets[i].send(msg);
+			}
 		}
+	},
+
+	/**
+	 * Format message using game protocols.
+	 *
+	 * @param {String} type Type of message
+	 * @param {Object} args Content of message
+	 * @returns Formatted message encoded with BiSON. Eg. {type: "update", message: "Hello World"}
+	 * @type String
+	 */
+	formatMessage: function(type, args) {
+		var msg = {type: type};
+
+		for (var arg in args) {
+			// Don't overwrite the message type
+			if (arg != "type")
+				msg[arg] = args[arg];
+		};
+		
+		return BISON.encode(msg);
 	}
-}
-
-/**
- * Format message using game protocols
- *
- * @param {String} type Type of message
- * @param {Object} args Content of message
- * @returns Formatted message encoded with BiSON. Eg. {type: "update", message: "Hello World"}
- * @type String
- */
-function formatMessage(type, args) {
-	var msg = {type: type};
-
-	for (var arg in args) {
-		// Don't overwrite the message type
-		if (arg != "type")
-			msg[arg] = args[arg];
-	};
-	
-	return BISON.encode(msg);
 };
