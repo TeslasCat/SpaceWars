@@ -7,13 +7,11 @@ var db = new Datastore({ filename: 'data/datatore_one', autoload: true });
 
 var io = require('socket.io')();
 var util = require("util");
-var UI = require ('./ui.js');
-
-ui = new UI();
 
 var names = require('./random-name');
 
 /* Some of our Stuff */
+var UI = require ('./ui.js');
 var Player = require("./Player");
 var BISON = require("./bison");
 var Ship = require("./ship");
@@ -21,22 +19,17 @@ var Ship = require("./ship");
 /**
  * Message protocols
  */
-var MESSAGE_TYPE_PING = 1;
-var MESSAGE_TYPE_UPDATE_PING = 2;
-var MESSAGE_TYPE_NEW_PLAYER = 3;
-// var MESSAGE_TYPE_SET_COLOUR = 4;
-// var MESSAGE_TYPE_UPDATE_PLAYER = 5;
-var MESSAGE_TYPE_REMOVE_PLAYER = 6;
-var MESSAGE_TYPE_AUTHENTICATION_PASSED = 7;
-var MESSAGE_TYPE_AUTHENTICATION_FAILED = 8;
-var MESSAGE_TYPE_AUTHENTICATE = 9;
-var MESSAGE_TYPE_ERROR = 10;
-// var MESSAGE_TYPE_ADD_BULLET = 11;
-// var MESSAGE_TYPE_UPDATE_BULLET = 12;
-// var MESSAGE_TYPE_REMOVE_BULLET = 13;
-// var MESSAGE_TYPE_KILL_PLAYER = 14;
-// var MESSAGE_TYPE_UPDATE_KILLS = 15;
-// var MESSAGE_TYPE_REVIVE_PLAYER = 16;
+var msgType = {
+    PING : 1,
+    UPDATE_PING : 2,
+    NEW_PLAYER : 3,
+    UPDATE_PLAYER : 4,
+    REMOVE_PLAYER : 5,
+    AUTHENTICATION_PASSED : 6,
+    AUTHENTICATION_FAILED : 7,
+    AUTHENTICATE : 8,
+	ERROR : -1,
+}
 
 /* Setup example users */
 // db.insert([{user_name: "user_a", password: "open-the-gate", name: "Pete", ships: [
@@ -46,6 +39,8 @@ var MESSAGE_TYPE_ERROR = 10;
 //   // newDocs is an array with these documents, augmented with their _id
 // });
 
+
+ui = new UI();
 players = [];
 ships   = [];
 planets = [];
@@ -74,10 +69,10 @@ var server = {
 		player.ping = ping;
 		
 		// Send ping back to player
-		socket.send(server.formatMessage(MESSAGE_TYPE_PING, {i: player.id, n: player.name, p: ping}));
+		socket.send(server.formatMsg(msgType.TYPE_PING, {i: player.id, n: player.name, p: ping}));
 		
 		// Broadcast ping to other players
-		server.broadcast_excluded(socket.id, server.formatMessage(MESSAGE_TYPE_UPDATE_PING, {i: socket.id, p: ping}));
+		server.broadcast_excluded(socket.id, server.formatMsg(msgType.UPDATE_PING, {i: socket.id, p: ping}));
 
 		// Request a new ping
 		server.sendPing(socket);
@@ -90,7 +85,7 @@ var server = {
 	sendPing: function(client) {
 		setTimeout(function ping_client() {
 			var timestamp = new Date().getTime();
-			client.send(server.formatMessage(MESSAGE_TYPE_PING, {t: timestamp.toString()}));
+			client.send(server.formatMsg(msgType.PING, {t: timestamp.toString()}));
 		}, 3000);
 	},
 
@@ -102,14 +97,14 @@ var server = {
 			if (res.length === 1) {
 				require('crypto').randomBytes(48, function(ex, buf) {
 					var newPlayerData = {i: socket.id, n: names.first() + " " + names.last(), s: res[0].ships, t: buf.toString('hex')}
-					socket.send(server.formatMessage(MESSAGE_TYPE_AUTHENTICATION_PASSED, newPlayerData ));
+					socket.send(server.formatMsg(msgType.AUTHENTICATION_PASSED, newPlayerData ));
 					ui.log(util.format("AUTH SUCCESS: ", data.u, socket.id));
 
 					server.newPlayer(socket, newPlayerData);
 				});
 
 			} else {
-				socket.send(server.formatMessage(MESSAGE_TYPE_AUTHENTICATION_FAILED));
+				socket.send(server.formatMsg(msgType.AUTHENTICATION_FAILED));
 				ui.log(util.format("AUTH FAIL: ", data.u, socket.id));
 			};
 		});
@@ -123,14 +118,14 @@ var server = {
 		players.push(player);
 
 		// Broadcast new player to all clients, excluding the client.
-		server.broadcast_excluded(socket.id, server.formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: player.id, n: player.name, s: player.ships}));
+		server.broadcast_excluded(socket.id, server.formatMsg(msgType.NEW_PLAYER, {i: player.id, n: player.name, s: player.ships}));
 
 		// Tell the new player about existing players
 		for(var i in players) {
 			// Make sure NOT to tell the client about it's self.
 			if(players[i].id == socket.id)
 				continue;
-			socket.send(server.formatMessage(MESSAGE_TYPE_NEW_PLAYER, {i: players[i].id, n: players[i].name, s: players[i].ships}));
+			socket.send(server.formatMsg(msgType.NEW_PLAYER, {i: players[i].id, n: players[i].name, s: players[i].ships}));
 		}
 
 		server.sendPing(socket);
@@ -211,7 +206,7 @@ var server = {
 	 * @returns Formatted message encoded with BiSON. Eg. {type: "update", message: "Hello World"}
 	 * @type String
 	 */
-	formatMessage: function(type, args) {
+	formatMsg: function(type, args) {
 		var msg = {type: type};
 
 		for (var arg in args) {
@@ -234,14 +229,15 @@ io.on('connection', function onConnection(client) {
 		var data = BISON.decode(msg);
 		if (data.type) {
 			switch (data.type) {
-				case MESSAGE_TYPE_PING:
+				case msgType.PING:
 					server.pingPlayer(client, data);
 					break;
-				case MESSAGE_TYPE_AUTHENTICATE:
+				case msgType.AUTHENTICATE:
 					server.authPlayer(client, data);
 					break;
 			};
 		} else {
+			client.send(server.formatMsg(msgType.ERROR));
 			ui.log("Invalid Message protocol");
 		};
     });
@@ -257,6 +253,6 @@ io.on('connection', function onConnection(client) {
 		ui.log(util.format("Player has disconnected: ", removePlayer.name, this.id));
 		players.splice(players.indexOf(removePlayer), 1);
 		// Broadcast removed player to connected socket clients
-		io.send(server.formatMessage(MESSAGE_TYPE_REMOVE_PLAYER, {i: this.id}));
+		io.send(server.formatMsg(msgType.REMOVE_PLAYER, {i: this.id}));
 	});
 });

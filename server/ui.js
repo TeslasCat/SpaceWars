@@ -15,7 +15,7 @@ var UI = function() {
 
     // Quit on Control-C.
     this.screen.key(['C-c'], function(ch, key) {
-      return process.exit(0);
+        return process.exit(0);
     });
 
     // Render the screen.
