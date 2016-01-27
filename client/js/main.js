@@ -52,8 +52,11 @@ $(function() {
         e.preventDefault();
         $('#login').addClass('hidden');
         setTimeout(function() {
+            var username = $('#login input[name=username]').val(),
+                password = $('#login input[name=password]').val();
+            // Login user
+            conn.sendMsg(msgType.AUTHENTICATE, { u: username, p: password});
             $('#login').remove();
-            game.start();
         }, 1000);
     });
 

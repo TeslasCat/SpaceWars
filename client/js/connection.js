@@ -35,6 +35,10 @@ var conn = {
         return BISON.encode(msg);
     },
 
+    sendMsg: function(type, data) {
+        conn.socket.send(conn.formatMsg(type, data));
+    },
+
     getPlayerBySocketID: function(id) {
         for(var p in game.players){
             if(game.players[p].id == id)
@@ -48,10 +52,7 @@ var conn = {
 /* once made connection, create a new player, send it to the server */
 conn.socket.on('connect', function() {
 
-    if(!game.the_player){
-        /* TODO: AUTH The User */
-        conn.socket.send(conn.formatMsg(msgType.AUTHENTICATE, { u: "user_a", p: "open-the-gate"} ));
-    }else {
+    if(game.the_player) {
         /* TODO: If connection to server is lost or server is restarted, re-auth with current user or delete this instance and load again. */
         console.log(game.the_player);
     }
@@ -109,6 +110,8 @@ conn.socket.on('connect', function() {
                         var ship = new Ship(data.s[i].name, data.s[i].plot);
                         game.ships.push(ship);
                     }
+
+                    game.start();
                     break;
                 case msgType.AUTHENTICATION_FAILED:
                     console.log("Failed to Auth player. Check username and password.");
