@@ -28,13 +28,14 @@ var msgType = {
     AUTHENTICATION_PASSED : 6,
     AUTHENTICATION_FAILED : 7,
     AUTHENTICATE : 8,
+    MOVE_SHIP : 9, 
 	ERROR : -1,
 }
 
 /* Setup example users */
 // db.insert([{user_name: "user_a", password: "open-the-gate", name: "Pete", ships: [
-// 	{name: "The_Flying_Cat", plot: {x: 10, y: 15}, speed: 1230}, 
-// 	{name: "Dark_Kitten_Matter" , plot: {x: 20, y: 35}, speed: 10}]}], function (err, newDocs) {
+// 	{id: "2", name: "The_Flying_Cat", plot: {x: 10, y: 15}, speed: 1230}, 
+// 	{id: "3", name: "Dark_Kitten_Matter" , plot: {x: 20, y: 35}, speed: 10}]}], function (err, newDocs) {
 //   // Two documents were inserted in the database
 //   // newDocs is an array with these documents, augmented with their _id
 // });
@@ -42,8 +43,11 @@ var msgType = {
 
 ui = new UI();
 players = [];
-ships   = [];
 planets = [];
+
+var objects = {
+	ships : [],
+}
 
 io.serveClient(false);
 io.listen(8000);
@@ -119,6 +123,7 @@ var server = {
 
 		// Broadcast new player to all clients, excluding the client.
 		server.broadcast_excluded(socket.id, server.formatMsg(msgType.NEW_PLAYER, {i: player.id, n: player.name, s: player.ships}));
+		// objects.ships.push({ playerID: player.id, ships: player.ships});
 
 		// Tell the new player about existing players
 		for(var i in players) {
@@ -135,7 +140,7 @@ var server = {
 	/**
 	 *
 	 */
-	initPlayerActivityMonitor: function(players, socket) {
+	initPlayerActivityMonitor: function(players, socks) {
 		setInterval(function() {
 			for(var i in players) {
 				var p = players[i];
@@ -146,9 +151,9 @@ var server = {
 				if(p.age > 6){
 					ui.log(util.format("CLOSE [TIME OUT]: ", p.name, p.id));
 
-					for(var id in io.sockets.sockets){
-						if(p.id == io.sockets.sockets[id].id) {
-							io.sockets.sockets[id].disconnect();
+					for(var id in socks.sockets.sockets){
+						if(p.id == socks.sockets.sockets[id].id) {
+							socks.sockets.sockets[id].disconnect();
 						}
 					}
 
@@ -162,7 +167,30 @@ var server = {
 	/**
 	 *
 	 */
-	initServerMonitor: function(players, socket) {
+	initObjectActivity: function(objects, socks) {
+		setInterval(function() {
+			// ui.log(JSON.stringify(objects))
+		}, 1000); /* 1s */
+	},
+
+	updateShipLoc: function(playerID, shipID, plot){
+		// TODO: Confirm move is legal.
+		var p = server.getPlayerBySocketID(playerID);
+		if(p){
+			for(var i in p.ships){
+				if(p.ships[i].id == shipID){
+					// TODO: Work out ETA 
+					ui.log(util.format("%s moves %s to [%s|%s]", p.name, p.ships[i].name, plot.x, plot.y));
+					server.broadcast_excluded(p.id, server.formatMsg(msgType.MOVE_SHIP, {i: p.id, s: p.ships[i].id, l: plot }));
+				}
+			}
+		}
+	},
+
+	/**
+	 *
+	 */
+	initServerMonitor: function(players, socks) {
 		setInterval(function() {
 			ui.updatePlayerList(players);
 		}, 1000); /* 1s */
@@ -180,6 +208,7 @@ var server = {
 	        if(players[p].id == id)
 	            return players[p];
 	    };
+	    ui.log(util.format("ERROR: Unable to find Player: %s", id ))
 	    return null;
 	},
 
@@ -220,6 +249,7 @@ var server = {
 };
 
 server.initPlayerActivityMonitor(players, io);
+server.initObjectActivity(objects, io);
 server.initServerMonitor(players, io);
 
 io.on('connection', function onConnection(client) {
@@ -234,6 +264,12 @@ io.on('connection', function onConnection(client) {
 					break;
 				case msgType.AUTHENTICATE:
 					server.authPlayer(client, data);
+					break;
+				case msgType.MOVE_SHIP:
+					server.updateShipLoc(client.id, data.s, data.p);
+					break;
+				case msgType.ERROR: 
+					ui.log(data.t);
 					break;
 			};
 		} else {

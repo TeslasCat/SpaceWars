@@ -10,6 +10,7 @@ var msgType = {
     AUTHENTICATION_PASSED : 6,
     AUTHENTICATION_FAILED : 7,
     AUTHENTICATE : 8,
+    MOVE_SHIP : 9, 
     ERROR : -1,
 }
 
@@ -40,10 +41,15 @@ var conn = {
             if(game.players[p].id == id)
                 return game.players[p];
         };
+        console.log(util.format("ERROR: Unable to find Player: %s", id ))
 
         return null;
     }
 }
+
+function updateShipLoc(shipID, plot){
+    conn.socket.send(conn.formatMsg(msgType.MOVE_SHIP, {s: shipID, p: plot} ));
+};
 
 /* once made connection, create a new player, send it to the server */
 conn.socket.on('connect', function() {
@@ -53,7 +59,10 @@ conn.socket.on('connect', function() {
         conn.socket.send(conn.formatMsg(msgType.AUTHENTICATE, { u: "user_a", p: "open-the-gate"} ));
     }else {
         /* TODO: If connection to server is lost or server is restarted, re-auth with current user or delete this instance and load again. */
-        console.log(game.the_player);
+        console.log("Replacing old connection. %s -> %s", game.the_player.id, conn.socket.id);
+        game.the_player = null;
+        conn.socket.send(conn.formatMsg(msgType.ERROR, { t: "TODO: Client replacing conn."} ));
+        conn.socket.send(conn.formatMsg(msgType.AUTHENTICATE, { u: "user_a", p: "open-the-gate"} ));
     }
 
     conn.socket.on("message", function(msg) {
@@ -105,13 +114,28 @@ conn.socket.on('connect', function() {
 
                     console.log("You're authed as: %s", data.n);
                     
+                    // TODO: Redner the ships on screen using 'game.players.ships' not 'game.ships' 
                     for(var i in data.s){
                         var ship = new Ship(data.s[i].name, data.s[i].plot);
+                        ship.id = data.s[i].id;
                         game.ships.push(ship);
                     }
                     break;
                 case msgType.AUTHENTICATION_FAILED:
                     console.log("Failed to Auth player. Check username and password.");
+                    break;
+                case msgType.MOVE_SHIP:
+                    // i: p.id, s: p.ships[i].id, l: plot
+                    var p = conn.getPlayerBySocketID(data.i);
+                    if(p){
+                        for(var i in p.ships){
+                            if(p.ships[i].id == data.s){
+                                // TODO: Work out ETA 
+                                console.log("%s moves %s to [%s|%s]", p.name, p.ships[i].name, data.l.x, data.l.y);
+                                // TODO: Execute move command.
+                            }
+                        }
+                    }
                     break;
             }
         }

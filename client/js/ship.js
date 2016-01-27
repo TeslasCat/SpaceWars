@@ -1,5 +1,7 @@
+// TODO: Constructor ID.
 var Ship = function(name, plot, speed) {
     this.name = name;
+    this.id = -1;
     this.size = 1 / 1000;
     this.speed = speed / 3600 || 1000 / 3600; // Defaults to 1000kmph
     this.plot = plot || {x: 0, y: 0};
@@ -28,6 +30,9 @@ Ship.prototype.scaleShape = function(size) {
 Ship.prototype.getPlot = function() {
     return c(this.plot);
 }
+Ship.prototype.setID = function(id) {
+    this.id = id;
+};
 
 Ship.prototype.setWaypoint = function(target) {
     this.waypoint = {};
