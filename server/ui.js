@@ -92,10 +92,11 @@ UI.prototype.updatePlayerList = function(players){
 }
 
 UI.prototype.log = function(str){
-    var self = this;
+    var self = this;    
+    var d = new Date();
     
     // make the screens say the right things
-    this.elements['main'].insertBottom(str);
+    this.elements['main'].insertBottom(util.format("%s:%s:%s | %s",d.getHours(), d.getMinutes(), d.getSeconds(), str));
     this.elements['main'].scroll(10);
 
     // Finally render to the screen.
@@ -104,7 +105,7 @@ UI.prototype.log = function(str){
 
 UI.prototype.setFooter = function(str){
     var self = this;
-    
+
     // make the screens say the right things
     this.elements['footer'].setContent(str);
 

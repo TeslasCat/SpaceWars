@@ -142,13 +142,13 @@ var server = {
 	 */
 	initPlayerActivityMonitor: function(players, socket) {
 		setInterval(function() {
-			ui.updatePlayerList(players);
 			for(var i in players) {
 				var p = players[i];
 				if(p == null)
 					continue;
 
-				if(p.age > 3){
+				/* If player does not respond in 30s */
+				if(p.age > 6){
 					ui.log(util.format("CLOSE [TIME OUT]: ", p.name, p.id));
 
 					for(var id in io.sockets.sockets){
@@ -161,7 +161,16 @@ var server = {
 				}
 				p.age += 1;
 			}
-		}, 5000);
+		}, 5000); /* 5s */
+	},
+
+	/**
+	 *
+	 */
+	initServerMonitor: function(players, socket) {
+		setInterval(function() {
+			ui.updatePlayerList(players);
+		}, 1000); /* 1s */
 	},
 
 	/**
@@ -216,6 +225,7 @@ var server = {
 };
 
 server.initPlayerActivityMonitor(players, io);
+server.initServerMonitor(players, io);
 
 io.on('connection', function onConnection(client) {
 	ui.log("CONNECT: " + client.id);
