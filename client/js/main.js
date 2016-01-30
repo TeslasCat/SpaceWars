@@ -26,9 +26,9 @@ $(function() {
 
     // Add ships
     game.ships = [];
-    var ship = new Ship('FR00001', {x: 0, y: 0});
+    // var ship = new Ship('FR00001', {x: 0, y: 0});
     // ship.setWaypoint({x: 0, y: 0});
-    game.ships.push(ship);
+    // game.ships.push(ship);
 
     // game.position = ship.getPlot();
     // game.tracking = ship;

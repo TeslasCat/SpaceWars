@@ -1,7 +1,7 @@
 // TODO: Constructor ID.
-var Ship = function(name, plot, speed) {
+var Ship = function(name, plot, speed, id) {
     this.name = name;
-    this.id = -1;
+    this.id = id;
     this.size = 1 / 1000;
     this.speed = speed / 3600 || 1000 / 3600; // Defaults to 1000kmph
     this.plot = plot || {x: 0, y: 0};

@@ -3,7 +3,7 @@
 process.title = "SpaceWars";
 
 var Datastore = require('nedb')
-var db = new Datastore({ filename: 'data/datatore_one', autoload: true });
+var db = new Datastore({ filename: 'data/players', autoload: true });
 
 var io = require('socket.io')();
 var util = require("util");
@@ -34,20 +34,17 @@ var msgType = {
 
 /* Setup example users */
 // db.insert([{user_name: "user_a", password: "open-the-gate", name: "Pete", ships: [
+// 	{id: "1", name: "FR00001", plot: {x: 0, y: 0}, speed: 1000},
 // 	{id: "2", name: "The_Flying_Cat", plot: {x: 10, y: 15}, speed: 1230}, 
-// 	{id: "3", name: "Dark_Kitten_Matter" , plot: {x: 20, y: 35}, speed: 10}]}], function (err, newDocs) {
-//   // Two documents were inserted in the database
-//   // newDocs is an array with these documents, augmented with their _id
+// 	{id: "3", name: "Dark_Kitten_Matter" , plot: {x: 20, y: 35}, speed: 10}]}
+// 	], function (err, newDocs) {
 // });
 
 
 ui = new UI();
 players = [];
 planets = [];
-
-var objects = {
-	ships : [],
-}
+ships = [];
 
 io.serveClient(false);
 io.listen(8000);
@@ -100,6 +97,7 @@ var server = {
 		db.find({ $and: [{user_name: data.u }, {password: data.p}] }, function auth_user(err, res) {
 			if (res.length === 1) {
 				require('crypto').randomBytes(48, function(ex, buf) {
+					// TODO: Send player and ship information at another time.
 					var newPlayerData = {i: socket.id, n: names.first() + " " + names.last(), s: res[0].ships, t: buf.toString('hex')}
 					socket.send(server.formatMsg(msgType.AUTHENTICATION_PASSED, newPlayerData ));
 					ui.log(util.format("AUTH SUCCESS: ", data.u, socket.id));
@@ -118,19 +116,22 @@ var server = {
 	 *
 	 */
 	newPlayer: function(socket, data) {
-		var player = new Player(socket.id, data.n, data.s, data.t);
+		var player = new Player(socket.id, data.n, data.t);
 		players.push(player);
 
 		// Broadcast new player to all clients, excluding the client.
-		server.broadcast_excluded(socket.id, server.formatMsg(msgType.NEW_PLAYER, {i: player.id, n: player.name, s: player.ships}));
-		// objects.ships.push({ playerID: player.id, ships: player.ships});
+		server.broadcast_excluded(socket.id, server.formatMsg(msgType.NEW_PLAYER, {i: player.id, n: player.name, s: data.s}));
+		
+		for(var i in data.s){
+			ships.push(data.s[i]);
+		}
 
 		// Tell the new player about existing players
 		for(var i in players) {
 			// Make sure NOT to tell the client about it's self.
 			if(players[i].id == socket.id)
 				continue;
-			socket.send(server.formatMsg(msgType.NEW_PLAYER, {i: players[i].id, n: players[i].name, s: players[i].ships}));
+			socket.send(server.formatMsg(msgType.NEW_PLAYER, {i: players[i].id, n: players[i].name, s: data.s}));
 		}
 
 		server.sendPing(socket);
@@ -138,7 +139,12 @@ var server = {
 	},
 
 	/**
+	 * Starts the Server Monitoring functions.
 	 *
+	 * @param {Object} players Array of connected players.
+	 * @param {Object} socks Socket IO connection object.
+	 * @returns Nothing.
+	 * @type Void.
 	 */
 	initPlayerActivityMonitor: function(players, socks) {
 		setInterval(function() {
@@ -175,20 +181,24 @@ var server = {
 
 	updateShipLoc: function(playerID, shipID, plot){
 		// TODO: Confirm move is legal.
-		var p = server.getPlayerBySocketID(playerID);
-		if(p){
-			for(var i in p.ships){
-				if(p.ships[i].id == shipID){
-					// TODO: Work out ETA 
-					ui.log(util.format("%s moves %s to [%s|%s]", p.name, p.ships[i].name, plot.x, plot.y));
-					server.broadcast_excluded(p.id, server.formatMsg(msgType.MOVE_SHIP, {i: p.id, s: p.ships[i].id, l: plot }));
-				}
+		ui.log(ships)
+		for(var i in ships){
+			ui.log(ships[i].name)
+			if(ships[i].id == shipID){
+				// TODO: Work out ETA 
+				ui.log(util.format("Ship moves %s to [%s|%s]", ships[i].name, plot.x, plot.y));
+				server.broadcast_excluded(playerID, server.formatMsg(msgType.MOVE_SHIP, {i: id, s: ships[i].id, l: plot }));
 			}
 		}
 	},
 
 	/**
+	 * Starts the Server Monitoring functions.
 	 *
+	 * @param {Object} players Array of connected players.
+	 * @param {Object} socks Socket IO connection object.
+	 * @returns Nothing.
+	 * @type Void.
 	 */
 	initServerMonitor: function(players, socks) {
 		setInterval(function() {
@@ -249,7 +259,7 @@ var server = {
 };
 
 server.initPlayerActivityMonitor(players, io);
-server.initObjectActivity(objects, io);
+// server.initObjectActivity(objects, io);
 server.initServerMonitor(players, io);
 
 io.on('connection', function onConnection(client) {
