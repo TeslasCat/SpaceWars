@@ -102,10 +102,12 @@ conn.socket.on('connect', function() {
                     game.players.splice(game.players.indexOf(p), 1);
                     break;
                 case msgType.AUTHENTICATION_PASSED:
+                    $('#login').remove();
+
                     game.the_player = new Player(conn.socket.id, data.n, data.s, data.t);
 
                     console.log("You're authed as: %s", data.n);
-                    
+
                     for(var i in data.s){
                         var ship = new Ship(data.s[i].name, data.s[i].plot);
                         game.ships.push(ship);
@@ -114,6 +116,8 @@ conn.socket.on('connect', function() {
                     game.start();
                     break;
                 case msgType.AUTHENTICATION_FAILED:
+                    $('#login').addClass('error').removeClass('hidden');
+
                     console.log("Failed to Auth player. Check username and password.");
                     break;
             }

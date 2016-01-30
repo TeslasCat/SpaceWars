@@ -56,7 +56,6 @@ $(function() {
                 password = $('#login input[name=password]').val();
             // Login user
             conn.sendMsg(msgType.AUTHENTICATE, { u: username, p: password});
-            $('#login').remove();
         }, 1000);
     });
 

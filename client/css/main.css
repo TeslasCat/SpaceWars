@@ -66,6 +66,13 @@ input[type=password] {
     position: relative;
     margin-bottom: 40px;
     letter-spacing: 1px;
+    transition: 0.2s;
+}
+
+#login.error .input {
+    color: #A23F42;
+    text-shadow: 0 0 5px #722E2E;
+    border-bottom: 1px solid #722E2E;
 }
 
 #login .input span {
