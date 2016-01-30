@@ -11,7 +11,7 @@ var helper = {
         if (Object.prototype.toString.call(source) === '[object Array]') {
             var c = [];
             for (var i=0; i<source.length; i++) {
-                c[i] = goclone(source[i]);
+                c[i] = helper.clone(source[i]);
             }
             return c;
         } else if (typeof(source)=="object") {
@@ -180,6 +180,30 @@ var helper = {
 
             if (helper.calculateDistance(plot, object.plot) <= object.radius) {
                 return object;
+            }
+        }
+    },
+
+    getClosestPlanet: function(plot) {
+        var closest,
+            distance;
+
+        for (var i = game.planets.length - 1; i >= 0; i--) {
+            object = game.planets[i];
+
+            var tmpDistance = helper.calculateDistance(plot, object.plot);
+            if (!closest || tmpDistance < distance) {
+                distance = tmpDistance;
+                closest = object;
+            }
+        }
+
+        if (!closest) {
+            return null;
+        } else {
+            return {
+                distance: distance,
+                planet: closest
             }
         }
     }
