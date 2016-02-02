@@ -1,10 +1,11 @@
-var Player = function(id, dbid, name, authToken){
+var Player = function(id, socket, authToken, name, userName){
 	this.id = id;
-	this.dbid = dbid; 
+	this.socket = socket; 
+	this.authToken = authToken;
 	this.name = name;
+	this.userName = userName;
 	this.age = 0;
 	this.ping = 0;
-	this.authToken = authToken;
 
 	return this;
 }

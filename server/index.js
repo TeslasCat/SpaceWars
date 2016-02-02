@@ -3,7 +3,8 @@
 process.title = "SpaceWars";
 
 var Datastore = require('nedb')
-var db = new Datastore({ filename: 'data/players', autoload: true });
+var playersDB = new Datastore({ filename: 'data/players', autoload: true });
+var shipsDB = new Datastore({ filename: 'data/ships', autoload: true });
 
 var io = require('socket.io')();
 var util = require("util");
@@ -33,18 +34,21 @@ var msgType = {
 	ERROR : -1,
 }
 
-/* Setup example users */
-// db.insert([{id: "1", user_name: "user_a", password: "open-the-gate", name: "Pete", ships: [
-// 	{id: "2", owner: "1", name: "The_Flying_Cat", plot: {x: 10, y: 15}, speed: 1230}, 
-// 	{id: "3", owner: "1", name: "Dark_Kitten_Matter" , plot: {x: 20, y: 35}, speed: 10}]}
+/* TODO: Setup auto ID */
+// playersDB.insert(
+// 	[
+// 		{id: "1", user_name: "user_a", password: "open-the-gate", name: "Pete"},
+// 		{id: "2", user_name: "user_b", password: "open-the-gate", name: "Luke"}
 // 	], function (err, newDocs) {
 // });
 
-// db.insert([{id: "2", user_name: "user_b", password: "open-the-gate", name: "Luke", ships: [
-// 	{id: "1", owner: "2", name: "FR00001", plot: {x: 0, y: 0}, speed: 1000}]}
+// shipsDB.insert(
+// 	[	
+// 		{id: "1", owner: "2", name: "FR00001", plot: {x: 0, y: 0}, speed: 1000},
+// 		{id: "2", owner: "1", name: "The_Flying_Cat", plot: {x: 10, y: 15}, speed: 1230}, 
+// 		{id: "3", owner: "1", name: "Dark_Kitten_Matter" , plot: {x: 20, y: 35}, speed: 10}
 // 	], function (err, newDocs) {
 // });
-
 
 ui = new UI();
 players = [];
@@ -57,6 +61,33 @@ ui.setFooter("Server listening on 8000");
 var serverStart = new Date().getTime();
 
 var server = {
+
+	init: function(){
+		ui.log("Loading Players");
+		playersDB.find({}, function (err, res) {
+			if (res.length != 0) {
+				for(var i in res){
+					players.push(new Player(res[i].id, null, null, res[i].name, res[i].user_name));
+				}
+			} else {
+				ui.log("ERROR: Unable to load players.");
+				return false;
+			};
+		});
+
+		ui.log("Loading Ships");
+		shipsDB.find({}, function (err, res) {
+			if (res.length != 0) {
+				for(var i in res){
+					ships.push(new Ship(res[i].id, res[i].owner, res[i].name, res[i].plot, res[i].speed));
+				}
+			} else {
+				ui.log("ERROR: Unable to load ships.");
+				return false;
+			};
+		});
+		return true;
+	},
 
 	/**
 	 *
@@ -98,36 +129,47 @@ var server = {
 	/**
 	 *
 	 */
-	authPlayer: function(socket, data) {
-		db.find({ $and: [{user_name: data.u }, {password: data.p}] }, function auth_user(err, res) {
-			if (res.length === 1) {
-				require('crypto').randomBytes(48, function(ex, buf) {
-					var newPlayerData = {i: socket.id, dbid: res[0].id, n: res[0].name, s: res[0].ships, t: buf.toString('hex')}
+	authPlayer: function(socket, messageID, userName, password) {
+		playersDB.find({ $and: [{user_name: userName }, {password: password}] }, function auth_user(err, res) {
+			if (!err && res.length === 1) {
+					// TODO: Maybe move this into the player class. player.getAuthToken(); ?
+					var authToken = server.generateToken();
+					var p = server.getPlayerByUserName(userName);
+					if(!p){
+						return;
+					}
+					p.authToken = authToken;
+					p.socket = socket.id;
 
-					socket.send(server.formatMsg(msgType.AUTH, {id: data.id, code: 1.1, t: newPlayerData.t }));
-					ui.log(util.format("AUTH SUCCESS: ", data.id, data.u, socket.id));
-
-					server.newPlayer(socket, newPlayerData);
-				});
-
+					socket.send(server.formatMsg(msgType.AUTH, {id: messageID, code: 1.1, t:  authToken }));
+					ui.log(util.format("AUTH SUCCESS: %s [%s]", userName, socket.id));
 			} else {
-				socket.send(server.formatMsg(msgType.AUTH, {id: data.id, code: 0.1 }))
+				socket.send(server.formatMsg(msgType.AUTH, {id: messageID, code: 0.1 }))
 				ui.log(util.format("AUTH FAIL: ", data.id, data.u, socket.id));
 			};
 		});
+	},
+
+
+
+	generateToken: function(){
+		var rtn = null;
+		require('crypto').randomBytes(48, function(ex, buf){ rtn = buf.toString('hex')});
+		return rtn;
 	},
 
 	/**
 	 *
 	 */
 	newPlayer: function(socket, data) {
-		var player = new Player(socket.id, data.dbid, data.n, data.t);
-		players.push(player);
+		// var player = new Player(data.id, socket.id, data.t, data.n);
+		// players.push(player);
 		
-		for(var i in data.s){
-			ships.push(data.s[i]);
-		}
-		server.sendPing(socket);
+		// for(var i in data.s){
+		// 	ships.push(data.s[i]);
+		// }
+		// server.sendPing(socket);
+		ui.log("newPlayer: Dont call me");
 	},
 
 	/**
@@ -145,6 +187,9 @@ var server = {
 				if(p == null)
 					continue;
 
+				if(p.socket == null)
+					continue;
+				
 				/* If player does not respond in 30s */
 				if(p.age > 6){
 					ui.log(util.format("CLOSE [TIME OUT]: ", p.name, p.id));
@@ -171,21 +216,19 @@ var server = {
 	// 	}, 1000); /* 1s */
 	// },
 
-	updateShipLoc: function(socks, data, shipID, plot){
+	updateShipLoc: function(socket, messageID, shipID, waypoint){
 		// TODO: Confirm move is legal.
+		for(var i in ships){
+			if(ships[i].id == shipID){
+				ui.log("TODO: Call ship.setWaypoint.");
+				server.broadcast_all(server.formatMsg(msgType.UPDATE_SHIP, {id: messageID, s: {id: shipID, w: waypoint} }));
+				return;
+			}
+		}
 
-	for(var id in io.sockets.sockets){
-		// if(p.id == io.sockets.sockets[id].id) {
-			io.sockets.sockets[id].send(server.formatMsg(msgType.UPDATE_SHIP, {id: data.id, s: {id: data.s.id, w: data.s.w} }));
-		// }
-	}
-		// for(var i in ships){
-				
-
-		// 	if(ships[i].id == data.s.id){
-		// 		ui.log(util.format("Ship moves %s to [%s|%s]", ships[i].name, plot.x, plot.y));
-		// 	}
-		// }
+		// If we reach these statements then something has gone wrong.
+		socket.send(formatMsg(msgType.UPDATE_SHIP, {code: 0.2, id: messageID}));
+		ui.log("ERROR: updateShiploc unable to find shipID in memory.");
 	},
 
 	updateUser: function(socks, data){
@@ -212,6 +255,15 @@ var server = {
 		}
 		ui.log("shitps by player: "+ rtn)
 		return rtn;
+	},
+
+	getPlayerByUserName: function(userName) {
+		for(var i in players){
+			if(players[i].userName == userName){
+				return players[i];
+			}
+		}
+		ui.log("ERROR: Unable to find player by UserName.");
 	},
 
 	/**
@@ -268,6 +320,13 @@ var server = {
 		}
 	},
 
+	broadcast_all: function(msg){
+		for(var i in io.sockets.sockets){
+			io.sockets.sockets[i].send(msg);
+		}
+	},
+
+
 	/**
 	 * Format message using game protocols.
 	 *
@@ -289,8 +348,10 @@ var server = {
 	}
 };
 
+if(server.init()){
+	ui.log("Data loaded into memory.");
+}
 server.initPlayerActivityMonitor(players, io);
-// server.initObjectActivity(objects, io);
 server.initServerMonitor(players, io);
 
 io.on('connection', function onConnection(client) {
@@ -304,19 +365,20 @@ io.on('connection', function onConnection(client) {
 					// server.pingPlayer(client, data);
 					break;
 				case msgType.AUTH:
-					server.authPlayer(client, data);
+					ui.log("Auth Player");
+					server.authPlayer(client, data.id, data.u, data.p);
 					break;
 				case msgType.UPDATE_USER:
+					ui.log("Update User");
 					server.updateUser(client, data)
-					ui.log("Update User : "+data.t)
 					break;
 				case msgType.UPDATE_SPACE:
-					ui.log("Update Space : "+data.t)
+					ui.log("Update Space");
 					server.updateSpace(client, data);
 					break;
 				case msgType.UPDATE_SHIP:
-					ui.log("Udpte ship")
-					server.updateShipLoc(server, data, data.s.id, data.s.w);
+					ui.log("Update ship");
+					server.updateShipLoc(client, data.id, data.s.id, data.s.w);
 					break;
 				case msgType.ERROR: 
 					ui.log(data.t);

@@ -1,4 +1,6 @@
-var Ship = function(name, plot, speed) {
+var Ship = function(id, owner, name, plot, speed) {
+    this.id = id;
+    this.owner = owner;
     this.name = name;
     this.size = 1 / 1000;
     this.speed = speed / 3600 || 1000 / 3600; // Defaults to 1000kmph
@@ -14,6 +16,5 @@ var Ship = function(name, plot, speed) {
 
     return this;
 };
-
 
 module.exports = Ship;
