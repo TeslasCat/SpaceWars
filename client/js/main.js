@@ -84,24 +84,15 @@ $(function() {
                 password = $('#login input[name=password]').val();
             // Login user
             conn.sendMsg(msgType.AUTH, { u: username, p: password}, function(data) {
-                alert('Stuff and stuff');
-
                 $('#login').remove();
 
-                game.the_player = new Player(conn.socket.id, data.n, data.s, data.t);
-                game.authToken = data.t;
+                // Setup user
+                game.user = new User(data.t);
+                game.user.update();
 
-                console.log("You're authed as: %s", data.n);
-
-                for(var i in data.s){
-                    var ship = new Ship(data.s[i].name, data.s[i].plot);
-                    game.ships.push(ship);
-                }
-
-                game.start();
-
+                // Load in landscape
+                game.updateSpace();
             }, function() {
-                alert('Not connected to server');
                 $('#login').addClass('error').removeClass('hidden');
             });
         }, 1000);
