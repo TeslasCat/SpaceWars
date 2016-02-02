@@ -1,5 +1,5 @@
 // TODO: Constructor ID.
-var Ship = function(name, plot, speed, id) {
+var Ship = function(id, name, plot, speed) {
     this.name = name;
     this.id = id;
     this.size = 1 / 1000;
@@ -34,10 +34,14 @@ Ship.prototype.setID = function(id) {
     this.id = id;
 };
 
-Ship.prototype.setWaypoint = function(target) {
+Ship.prototype.setWaypoint = function(target, server) {
     this.waypoint = {};
-    this.waypoint.target = target;
-    this.waypoint.plot = target.getPlot();
+    if (target.x) {
+        this.waypoint.plot = target
+    } else {
+        this.waypoint.target = target;
+        this.waypoint.plot = target.getPlot();
+    }
     this.waypoint.origin = this.getPlot();
     this.waypoint.distance = helper.calculateDistance(this.waypoint.plot, this.waypoint.origin);
     this.waypoint.vector = {
@@ -46,11 +50,19 @@ Ship.prototype.setWaypoint = function(target) {
                            };
 
     // Adjust for orbit
-    this.waypoint.plot.x -= this.waypoint.vector.x * (target.radius + 2.5);
-    this.waypoint.plot.y -= this.waypoint.vector.y * (target.radius + 2.5);
+    if (target.radius) {
+        this.waypoint.plot.x -= this.waypoint.vector.x * (target.radius + 2.5);
+        this.waypoint.plot.y -= this.waypoint.vector.y * (target.radius + 2.5);
+    }
     this.waypoint.distance = helper.calculateDistance(this.waypoint.plot, this.waypoint.origin);
 
     this.heading = helper.calculateAngle(this.waypoint.origin, this.waypoint.plot);
+
+    // Tell server if they didn't tell us
+    if (!server) {
+        console.log(target);
+        conn.sendMsg(msgType.UPDATE_SHIP, { s: { id: this.id, w: this.waypoint.plot } });
+    }
 
     return this.waypoint;
 };

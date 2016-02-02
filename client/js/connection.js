@@ -10,7 +10,7 @@ var msgType = {
     REMOVE_PLAYER : 5,
     UPDATE_SPACE : 6,
     AUTH : 8,
-    MOVE_SHIP : 9, 
+    UPDATE_SHIP : 9, 
     ERROR : -1,
 }
 
@@ -19,7 +19,7 @@ var conn = {
     /**
      * Init Connection to Server.
      */ 
-    socket : io("/"),
+    socket : io("10.42.0.1"),
 
     /**
      * Sequential message ID
@@ -40,12 +40,20 @@ var conn = {
         // Add in message ID
         msg["id"] = conn.messageID;
 
+        // Add in token if user is authed
+        if (game.user && game.user.token) {
+            msg["t"] = game.user.token;
+        }
+
+        // Log what is being sent
+        console.log(type, msg);
+
         // Increment message ID for next message
         conn.messageID++;
 
         for (var arg in args) {
             // Don't overwrite the message type
-            if (arg != "type" && arg != "id") {
+            if (arg != "type" && arg != "id" && arg != "t") {
                 msg[arg] = args[arg];
             }
         };
@@ -122,17 +130,27 @@ conn.socket.on('connect', function() {
         /* DEBUG */
         // console.log(msg, data);
 
-        // Codee; 
-        // Fasle 0
+        // Code; 
+        // False 0
         //  0.1 - Invalid Login Details
         //  0.2 - Banned
         //  0.3 - Rate Limited 
-        // // True 1
-            // 1.1 - GO GO Go 
+        // True 1
+        //  1.1 - GO GO Go 
+
+        if (data.id && data.type != msgType.PING) {
+            console.log("Reponse to %s", data.id, data);
+        } else if (data.type != msgType.PING) {
+            console.log("Message %s", data.type, data);
+        }
 
         // Call callback if response contains the original message ID
-        if (data.id && conn.callbacks[data.id] && conn.callbacks[data.id].success) {
-            conn.callbacks[data.id].success(data);
+        if (data.id && conn.callbacks[data.id]) {
+            if ((!data.code || data.code.toString()[0] === "1") && conn.callbacks[data.id].success) {
+                conn.callbacks[data.id].success(data);
+            } else if (conn.callbacks[data.id].error) {
+                conn.callbacks[data.id].error(data);
+            }
         }
 
         // console.log(conn.callbacks[data.id])
@@ -152,26 +170,26 @@ conn.socket.on('connect', function() {
                 //         p.ping = data.p;
                 //     }
                 //     break;
-                case msgType.UPDATE_USER:
-                    var p = new Player(conn.socket.id, data.n);
+                // case msgType.UPDATE_USER:
+                //     var p = new Player(conn.socket.id, data.n);
 
-                    if(data.i == conn.socket.id){
-                        game.the_player = p;
-                        console.log("Loaded the_player data.");
-                        break;
-                    }
+                //     if(data.i == conn.socket.id){
+                //         game.the_player = p;
+                //         console.log("Loaded the_player data.");
+                //         break;
+                //     }
 
-                    // console.log(data.s)
-                    for(var i in data.s) {
-                        var s = new Ship(data.s[i].name, data.s[i].plot, data.s[i].speed, data.s[i].id);
-                        game.ships.push(s);
-                    }
+                //     // console.log(data.s)
+                //     for(var i in data.s) {
+                //         var s = new Ship(data.s[i].name, data.s[i].plot, data.s[i].speed, data.s[i].id);
+                //         game.ships.push(s);
+                //     }
 
-                    game.players.push(p);
+                //     game.players.push(p);
 
-                    // TODO: Fix this up.
-                    game.ui.showInfo(p);
-                    break;
+                //     // TODO: Fix this up.
+                //     game.ui.showInfo(p);
+                //     break;
                 case msgType.REMOVE_PLAYER:
                     var p = conn.getPlayerBySocketID(data.i);
                     if(!p){
@@ -183,12 +201,14 @@ conn.socket.on('connect', function() {
 
                     game.players.splice(game.players.indexOf(p), 1);
                     break;
-                case msgType.MOVE_SHIP:
+                case msgType.UPDATE_SHIP:
+                console.log('MOVING');
                     // i: p.id, s: p.ships[i].id, l: plot
                     for(var i in game.ships){
-                        if(ships[i].id == data.i){
-                            console.log("%s moves to [%s|%s]", game.ships[i].name, data.l.x, data.l.y);
-                            game.ship.setWaypoint(data.l);
+                        console.log(game.ships[i].id, data.s.id);
+                        if(game.ships[i].id == data.s.id){
+                            console.log("%s moves to [%s|%s]", game.ships[i].name, data.s.w.x, data.s.w.y);
+                            game.ships[i].setWaypoint(data.s.w, true);
                         }
                     }
                     break;

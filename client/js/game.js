@@ -8,13 +8,25 @@ var game = {
     introLength: 750,
 
     start: function() {
+        if (this.gameStart) return;
+
         registerMouseListeners();
         registerCommands();
         $('body').addClass('playing');
         // TODO: send UPDATE_USER. and UPDATE_SPACE.
         this.gameStart = (new Date()).getTime();
         this.draw(this.gameStart);
-
+    },
+    updateSpace: function() {
+        conn.sendMsg(msgType.UPDATE_SPACE, {}, function(data) {
+            // Add ships to game
+            for (var n = 0; n < data.s.length; n++) {
+                var s = data.s[n],
+                    ship = new Ship(s.id, s.name, s.plot);
+                // ship.setWaypoint({x: 0, y: 0});
+                game.ships.push(ship);
+            }
+        });
     },
     draw: function(lastDraw) {
         var self = this,
