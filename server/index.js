@@ -35,9 +35,13 @@ var msgType = {
 
 /* Setup example users */
 // db.insert([{user_name: "user_a", password: "open-the-gate", name: "Pete", ships: [
-// 	{id: "1", name: "FR00001", plot: {x: 0, y: 0}, speed: 1000},
 // 	{id: "2", name: "The_Flying_Cat", plot: {x: 10, y: 15}, speed: 1230}, 
 // 	{id: "3", name: "Dark_Kitten_Matter" , plot: {x: 20, y: 35}, speed: 10}]}
+// 	], function (err, newDocs) {
+// });
+
+// db.insert([{user_name: "user_b", password: "open-the-gate", name: "Luke", ships: [
+// 	{id: "1", name: "FR00001", plot: {x: 0, y: 0}, speed: 1000}]}
 // 	], function (err, newDocs) {
 // });
 
@@ -98,7 +102,7 @@ var server = {
 		db.find({ $and: [{user_name: data.u }, {password: data.p}] }, function auth_user(err, res) {
 			if (res.length === 1) {
 				require('crypto').randomBytes(48, function(ex, buf) {
-					var newPlayerData = {i: socket.id, n: names.first() + " " + names.last(), s: res[0].ships, t: buf.toString('hex')}
+					var newPlayerData = {i: socket.id, n: res[0].name, s: res[0].ships, t: buf.toString('hex')}
 
 					socket.send(server.formatMsg(msgType.AUTH, {id: data.id, code: 1.1, t: newPlayerData.t }));
 					ui.log(util.format("AUTH SUCCESS: ", data.id, data.u, socket.id));
