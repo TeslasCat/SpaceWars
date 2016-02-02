@@ -5,12 +5,11 @@
 var msgType = {
     PING : 1,
     UPDATE_PING : 2,
-    NEW_PLAYER : 3,
+    UPDATE_USER : 3,
     UPDATE_PLAYER : 4,
     REMOVE_PLAYER : 5,
-    AUTHENTICATION_PASSED : 6,
-    AUTHENTICATION_FAILED : 7,
-    AUTHENTICATE : 8,
+    UPDATE_SPACE : 6,
+    AUTH : 8,
     MOVE_SHIP : 9, 
     ERROR : -1,
 }
@@ -25,7 +24,7 @@ var conn = {
     /**
      * Sequential message ID
      */
-    messageID : 0,
+    messageID : 1,
 
     /**
      * Callbacks store for messages that have yet to recieve a reply
@@ -38,15 +37,13 @@ var conn = {
     formatMsg: function(type, args) {
         var msg = {type: type};
 
+        // Add in message ID
+        msg["id"] = conn.messageID;
+
+        // Increment message ID for next message
+        conn.messageID++;
+
         for (var arg in args) {
-            // Add in message ID
-            msg["id"] = conn.messageID;
-
-            console.log(msg["id"]);
-
-            // Increment message ID for next message
-            conn.messageID++;
-
             // Don't overwrite the message type
             if (arg != "type" && arg != "id") {
                 msg[arg] = args[arg];
@@ -74,18 +71,16 @@ var conn = {
     queueCallbacks: function(messageID, callback, errorCallback) {
         var tmpCallbacks = {};
 
-        // TODO: check success callback is a callable function
         if (callback && typeof callback === 'function') {
             tmpCallbacks.success = callback;
         }
 
-        // TODO: check error callback is a callable function
         if (errorCallback && typeof errorCallback === 'function') {
             tmpCallbacks.error = errorCallback;
         }
 
         // Check that at least one callback has been added
-        if (tmpCallbacks.length) {
+        if (tmpCallbacks.success || tmpCallbacks.error) {
             conn.callbacks[messageID] = tmpCallbacks;
         }
     },
@@ -102,16 +97,16 @@ var conn = {
 }
 
 function updateShipLoc(shipID, plot){
-    conn.socket.send(conn.formatMsg(msgType.MOVE_SHIP, {i: shipID, p: plot} ));
+    conn.sendMsg(msgType.MOVE_SHIP, {i: shipID, p: plot});
 };
 
 /* once made connection, create a new player, send it to the server */
 conn.socket.on('connect', function() {
 
-    console.log("SENT: Auth")
+    // console.log("SENT: Auth")
     // if(!game.the_player){
         /* TODO: AUTH The User */
-        conn.socket.send(conn.formatMsg(msgType.AUTHENTICATE, { u: "user_a", p: "open-the-gate"} ));
+        // conn.socket.send(conn.formatMsg(msgType.AUTHENTICATE, { u: "user_a", p: "open-the-gate"} ));
     // }else {
     //     /* TODO: If connection to server is lost or server is restarted, re-auth with current user or delete this instance and load again. */
     //     console.log("Replacing old connection. %s -> %s", game.the_player.id, conn.socket.id);
@@ -127,11 +122,20 @@ conn.socket.on('connect', function() {
         /* DEBUG */
         // console.log(msg, data);
 
+        // Codee; 
+        // Fasle 0
+        //  0.1 - Invalid Login Details
+        //  0.2 - Banned
+        //  0.3 - Rate Limited 
+        // // True 1
+            // 1.1 - GO GO Go 
 
         // Call callback if response contains the original message ID
         if (data.id && conn.callbacks[data.id] && conn.callbacks[data.id].success) {
             conn.callbacks[data.id].success(data);
         }
+
+        // console.log(conn.callbacks[data.id])
 
         // Call default functions
         if (data.type) {
@@ -148,7 +152,7 @@ conn.socket.on('connect', function() {
                 //         p.ping = data.p;
                 //     }
                 //     break;
-                case msgType.NEW_PLAYER:
+                case msgType.UPDATE_USER:
                     var p = new Player(conn.socket.id, data.n);
 
                     if(data.i == conn.socket.id){
@@ -178,13 +182,6 @@ conn.socket.on('connect', function() {
                     console.log("Player has disconnected: %s %s", p.name, p.id);
 
                     game.players.splice(game.players.indexOf(p), 1);
-                    break;
-                case msgType.AUTHENTICATION_PASSED:
-                    console.log("Auth Token %s", data.t);
-                    game.authToken = data.t;
-                    break;
-                case msgType.AUTHENTICATION_FAILED:
-                    console.log("Failed to Auth player. Check username and password.");
                     break;
                 case msgType.MOVE_SHIP:
                     // i: p.id, s: p.ships[i].id, l: plot

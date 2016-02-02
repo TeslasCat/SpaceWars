@@ -24,12 +24,11 @@ var Ship = require("./ship");
 var msgType = {
     PING : 1,
     UPDATE_PING : 2,
-    NEW_PLAYER : 3,
+    UPDATE_USER : 3,
     UPDATE_PLAYER : 4,
     REMOVE_PLAYER : 5,
-    AUTHENTICATION_PASSED : 6,
-    AUTHENTICATION_FAILED : 7,
-    AUTHENTICATE : 8,
+    UPDATE_SPACE : 6,
+    AUTH : 8,
     MOVE_SHIP : 9, 
 	ERROR : -1,
 }
@@ -72,7 +71,7 @@ var server = {
 		player.ping = ping;
 		
 		// Send ping back to player
-		socket.send(server.formatMsg(msgType.TYPE_PING, {i: player.id, n: player.name, p: ping}));
+		socket.send(server.formatMsg(msgType.TYPE_PING, {id: data.id, i: player.id, n: player.name, p: ping}));
 		
 		// Broadcast ping to other players
 		// server.broadcast_excluded(socket.id, server.formatMsg(msgType.UPDATE_PING, {i: socket.id, p: ping}));
@@ -88,7 +87,7 @@ var server = {
 	sendPing: function(client) {
 		setTimeout(function ping_client() {
 			var timestamp = new Date().getTime();
-			client.send(server.formatMsg(msgType.PING, {t: timestamp.toString()}));
+			client.send(server.formatMsg(msgType.PING, { t: timestamp.toString()}));
 		}, 3000);
 	},
 
@@ -99,17 +98,17 @@ var server = {
 		db.find({ $and: [{user_name: data.u }, {password: data.p}] }, function auth_user(err, res) {
 			if (res.length === 1) {
 				require('crypto').randomBytes(48, function(ex, buf) {
-					// TODO: Send player and ship information at another time.
 					var newPlayerData = {i: socket.id, n: names.first() + " " + names.last(), s: res[0].ships, t: buf.toString('hex')}
-					socket.send(server.formatMsg(msgType.AUTHENTICATION_PASSED, { t: newPlayerData.t }));
-					ui.log(util.format("AUTH SUCCESS: ", data.u, socket.id));
+
+					socket.send(server.formatMsg(msgType.AUTH, {id: data.id, code: 1.1, t: newPlayerData.t }));
+					ui.log(util.format("AUTH SUCCESS: ", data.id, data.u, socket.id));
 
 					server.newPlayer(socket, newPlayerData);
 				});
 
 			} else {
-				socket.send(server.formatMsg(msgType.AUTHENTICATION_FAILED));
-				ui.log(util.format("AUTH FAIL: ", data.u, socket.id));
+				socket.send(server.formatMsg(msgType.AUTH, {id: data.id, code: 0.1 }))
+				ui.log(util.format("AUTH FAIL: ", data.id, data.u, socket.id));
 			};
 		});
 	},
@@ -121,7 +120,7 @@ var server = {
 		var player = new Player(socket.id, data.n, data.t);
 		players.push(player);
 
-		socket.send(server.formatMsg(msgType.NEW_PLAYER, {i: player.id, n: player.name, s: data.s}));
+		socket.send(server.formatMsg(msgType.UPDATE_USER, {id: data.id, i: player.id, n: player.name, s: data.s}));
 		
 		for(var i in data.s){
 			ships.push(data.s[i]);
@@ -132,11 +131,11 @@ var server = {
 			// Make sure NOT to tell the client about it's self.
 			if(players[i].id == socket.id)
 				continue;
-			socket.send(server.formatMsg(msgType.NEW_PLAYER, {i: players[i].id, n: players[i].name, s: data.s}));
+			socket.send(server.formatMsg(msgType.UPDATE_USER, {id: data.id, i: players[i].id, n: players[i].name, s: data.s}));
 		}
 
 		server.sendPing(socket);
-		ui.log(util.format("NEW_PLAYER: ", player.name, player.id));
+		ui.log(util.format("UPDATE_USER: ", data.id, player.name, player.id));
 	},
 
 	/**
@@ -174,11 +173,11 @@ var server = {
 	/**
 	 *
 	 */
-	initObjectActivity: function(objects, socks) {
-		setInterval(function() {
-			// ui.log(JSON.stringify(objects))
-		}, 1000); /* 1s */
-	},
+	// initObjectActivity: function(objects, socks) {
+	// 	setInterval(function() {
+	// 		// ui.log(JSON.stringify(objects))
+	// 	}, 1000); /* 1s */
+	// },
 
 	updateShipLoc: function(playerID, shipID, plot){
 		// TODO: Confirm move is legal.
@@ -189,7 +188,7 @@ var server = {
 		for(var i in ships){
 			if(ships[i].id == shipID){
 				ui.log(util.format("Ship moves %s to [%s|%s]", ships[i].name, plot.x, plot.y));
-				server.broadcast_excluded(playerID, server.formatMsg(msgType.MOVE_SHIP, {i: id, s: ships[i].id, l: plot }));
+				server.broadcast_excluded(playerID, server.formatMsg(msgType.MOVE_SHIP, { s: ships[i].id, l: plot }));
 			}
 		}
 	},
@@ -274,7 +273,7 @@ io.on('connection', function onConnection(client) {
 				case msgType.PING:
 					server.pingPlayer(client, data);
 					break;
-				case msgType.AUTHENTICATE:
+				case msgType.AUTH:
 					server.authPlayer(client, data);
 					break;
 				case msgType.MOVE_SHIP:

@@ -83,12 +83,13 @@ $(function() {
             var username = $('#login input[name=username]').val(),
                 password = $('#login input[name=password]').val();
             // Login user
-            conn.sendMsg(msgType.AUTHENTICATE, { u: username, p: password}, function() {
+            conn.sendMsg(msgType.AUTH, { u: username, p: password}, function(data) {
                 alert('Stuff and stuff');
 
                 $('#login').remove();
 
                 game.the_player = new Player(conn.socket.id, data.n, data.s, data.t);
+                game.authToken = data.t;
 
                 console.log("You're authed as: %s", data.n);
 
@@ -98,6 +99,7 @@ $(function() {
                 }
 
                 game.start();
+
             }, function() {
                 alert('Not connected to server');
                 $('#login').addClass('error').removeClass('hidden');

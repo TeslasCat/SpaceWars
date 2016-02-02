@@ -11,9 +11,10 @@ var game = {
         registerMouseListeners();
         registerCommands();
         $('body').addClass('playing');
-
+        // TODO: send UPDATE_USER. and UPDATE_SPACE.
         this.gameStart = (new Date()).getTime();
         this.draw(this.gameStart);
+
     },
     draw: function(lastDraw) {
         var self = this,
