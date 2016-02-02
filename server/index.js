@@ -16,6 +16,8 @@ var Player = require("./Player");
 var BISON = require("./bison");
 var Ship = require("./ship");
 
+"use strict";
+
 /**
  * Message protocols
  */
@@ -73,7 +75,7 @@ var server = {
 		socket.send(server.formatMsg(msgType.TYPE_PING, {i: player.id, n: player.name, p: ping}));
 		
 		// Broadcast ping to other players
-		server.broadcast_excluded(socket.id, server.formatMsg(msgType.UPDATE_PING, {i: socket.id, p: ping}));
+		// server.broadcast_excluded(socket.id, server.formatMsg(msgType.UPDATE_PING, {i: socket.id, p: ping}));
 
 		// Request a new ping
 		server.sendPing(socket);
@@ -99,7 +101,7 @@ var server = {
 				require('crypto').randomBytes(48, function(ex, buf) {
 					// TODO: Send player and ship information at another time.
 					var newPlayerData = {i: socket.id, n: names.first() + " " + names.last(), s: res[0].ships, t: buf.toString('hex')}
-					socket.send(server.formatMsg(msgType.AUTHENTICATION_PASSED, newPlayerData ));
+					socket.send(server.formatMsg(msgType.AUTHENTICATION_PASSED, { t: newPlayerData.t }));
 					ui.log(util.format("AUTH SUCCESS: ", data.u, socket.id));
 
 					server.newPlayer(socket, newPlayerData);
@@ -119,8 +121,7 @@ var server = {
 		var player = new Player(socket.id, data.n, data.t);
 		players.push(player);
 
-		// Broadcast new player to all clients, excluding the client.
-		server.broadcast_excluded(socket.id, server.formatMsg(msgType.NEW_PLAYER, {i: player.id, n: player.name, s: data.s}));
+		socket.send(server.formatMsg(msgType.NEW_PLAYER, {i: player.id, n: player.name, s: data.s}));
 		
 		for(var i in data.s){
 			ships.push(data.s[i]);
@@ -181,9 +182,11 @@ var server = {
 
 	updateShipLoc: function(playerID, shipID, plot){
 		// TODO: Confirm move is legal.
-		ui.log(ships)
+		ui.log("Player: " +playerID)
+		ui.log("Ship: " + shipID)
+		ui.log("Plot: " +plot.x + " " + plot.y)
+
 		for(var i in ships){
-			ui.log(ships[i].name)
 			if(ships[i].id == shipID){
 				// TODO: Work out ETA 
 				ui.log(util.format("Ship moves %s to [%s|%s]", ships[i].name, plot.x, plot.y));
@@ -276,7 +279,7 @@ io.on('connection', function onConnection(client) {
 					server.authPlayer(client, data);
 					break;
 				case msgType.MOVE_SHIP:
-					server.updateShipLoc(client.id, data.s, data.p);
+					server.updateShipLoc(client.id, data.i, data.p);
 					break;
 				case msgType.ERROR: 
 					ui.log(data.t);
