@@ -1,10 +1,7 @@
-var Player = function(id, name, ships, authToken){
+var Player = function(id, name){
 	this.id = id;
 	this.name = name;
-	this.ships = ships;
 	this.ping = 0;
-	this.planets = [];
-	this.authToken = authToken;
-
 	return this;
 }
+

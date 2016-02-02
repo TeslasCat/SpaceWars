@@ -145,6 +145,11 @@ function registerCommands() {
 
             // Get ETA
             response += '. ETA: ' + helper.calculateETA(ship, waypoint.plot);
+
+            // Notifiy server
+            updateShipLoc(ship.id, waypoint.plot);
+            // TODO: Await for confirmation.
+
         } else if (action == 'info') {
             var object = lookupContext(options[0], 'object');
 
