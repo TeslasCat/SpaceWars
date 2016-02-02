@@ -29,19 +29,19 @@ var msgType = {
     REMOVE_PLAYER : 5,
     UPDATE_SPACE : 6,
     AUTH : 8,
-    MOVE_SHIP : 9, 
+    UPDATE_SHIP : 9, 
 	ERROR : -1,
 }
 
 /* Setup example users */
-// db.insert([{user_name: "user_a", password: "open-the-gate", name: "Pete", ships: [
-// 	{id: "2", name: "The_Flying_Cat", plot: {x: 10, y: 15}, speed: 1230}, 
-// 	{id: "3", name: "Dark_Kitten_Matter" , plot: {x: 20, y: 35}, speed: 10}]}
+// db.insert([{id: "1", user_name: "user_a", password: "open-the-gate", name: "Pete", ships: [
+// 	{id: "2", owner: "1", name: "The_Flying_Cat", plot: {x: 10, y: 15}, speed: 1230}, 
+// 	{id: "3", owner: "1", name: "Dark_Kitten_Matter" , plot: {x: 20, y: 35}, speed: 10}]}
 // 	], function (err, newDocs) {
 // });
 
-// db.insert([{user_name: "user_b", password: "open-the-gate", name: "Luke", ships: [
-// 	{id: "1", name: "FR00001", plot: {x: 0, y: 0}, speed: 1000}]}
+// db.insert([{id: "2", user_name: "user_b", password: "open-the-gate", name: "Luke", ships: [
+// 	{id: "1", owner: "2", name: "FR00001", plot: {x: 0, y: 0}, speed: 1000}]}
 // 	], function (err, newDocs) {
 // });
 
@@ -75,7 +75,7 @@ var server = {
 		player.ping = ping;
 		
 		// Send ping back to player
-		socket.send(server.formatMsg(msgType.TYPE_PING, {id: data.id, i: player.id, n: player.name, p: ping}));
+		socket.send(server.formatMsg(msgType.PING, {id: data.id, i: player.id, n: player.name, p: ping}));
 		
 		// Broadcast ping to other players
 		// server.broadcast_excluded(socket.id, server.formatMsg(msgType.UPDATE_PING, {i: socket.id, p: ping}));
@@ -102,7 +102,7 @@ var server = {
 		db.find({ $and: [{user_name: data.u }, {password: data.p}] }, function auth_user(err, res) {
 			if (res.length === 1) {
 				require('crypto').randomBytes(48, function(ex, buf) {
-					var newPlayerData = {i: socket.id, n: res[0].name, s: res[0].ships, t: buf.toString('hex')}
+					var newPlayerData = {i: socket.id, dbid: res[0].id, n: res[0].name, s: res[0].ships, t: buf.toString('hex')}
 
 					socket.send(server.formatMsg(msgType.AUTH, {id: data.id, code: 1.1, t: newPlayerData.t }));
 					ui.log(util.format("AUTH SUCCESS: ", data.id, data.u, socket.id));
@@ -121,25 +121,13 @@ var server = {
 	 *
 	 */
 	newPlayer: function(socket, data) {
-		var player = new Player(socket.id, data.n, data.t);
+		var player = new Player(socket.id, data.dbid, data.n, data.t);
 		players.push(player);
-
-		socket.send(server.formatMsg(msgType.UPDATE_USER, {id: data.id, i: player.id, n: player.name, s: data.s}));
 		
 		for(var i in data.s){
 			ships.push(data.s[i]);
 		}
-
-		// Tell the new player about existing players
-		for(var i in players) {
-			// Make sure NOT to tell the client about it's self.
-			if(players[i].id == socket.id)
-				continue;
-			socket.send(server.formatMsg(msgType.UPDATE_USER, {id: data.id, i: players[i].id, n: players[i].name, s: data.s}));
-		}
-
 		server.sendPing(socket);
-		ui.log(util.format("UPDATE_USER: ", data.id, player.name, player.id));
 	},
 
 	/**
@@ -183,18 +171,47 @@ var server = {
 	// 	}, 1000); /* 1s */
 	// },
 
-	updateShipLoc: function(playerID, shipID, plot){
+	updateShipLoc: function(socks, data, shipID, plot){
 		// TODO: Confirm move is legal.
-		ui.log("Player: " +playerID)
-		ui.log("Ship: " + shipID)
-		ui.log("Plot: " +plot.x + " " + plot.y)
 
+	for(var id in io.sockets.sockets){
+		// if(p.id == io.sockets.sockets[id].id) {
+			io.sockets.sockets[id].send(server.formatMsg(msgType.UPDATE_SHIP, {id: data.id, s: {id: data.s.id, w: data.s.w} }));
+		// }
+	}
+		// for(var i in ships){
+				
+
+		// 	if(ships[i].id == data.s.id){
+		// 		ui.log(util.format("Ship moves %s to [%s|%s]", ships[i].name, plot.x, plot.y));
+		// 	}
+		// }
+	},
+
+	updateUser: function(socks, data){
+		var p = server.getPlayerByAuthToken(data.t);
+		var playerShips = server.getShipsByPlayer(data.t);
+
+
+		socks.send(server.formatMsg(msgType.UPDATE_USER, {id: data.id, user: {id: data.dbid, n: p.name}, s: playerShips}));
+
+	},
+
+	updateSpace: function(socks, data){
+		// TODO: Remove non-relevant data from the ships to streamline resources.
+		socks.send(server.formatMsg(msgType.UPDATE_SPACE, {id: data.id, s: ships}));
+	},
+
+	getShipsByPlayer: function(authToken) {
+		var p = server.getPlayerByAuthToken(authToken);
+		var rtn = [];
 		for(var i in ships){
-			if(ships[i].id == shipID){
-				ui.log(util.format("Ship moves %s to [%s|%s]", ships[i].name, plot.x, plot.y));
-				server.broadcast_excluded(playerID, server.formatMsg(msgType.MOVE_SHIP, { s: ships[i].id, l: plot }));
+			if(ships[i].owner = p.dbid){
+				rtn.push(ships[i]);
 			}
 		}
+		ui.log("shitps by player: "+ rtn)
+		return rtn;
 	},
 
 	/**
@@ -224,6 +241,15 @@ var server = {
 	            return players[p];
 	    };
 	    ui.log(util.format("ERROR: Unable to find Player: %s", id ))
+	    return null;
+	},
+
+	getPlayerByAuthToken: function(authToken) {
+	    for(var p in players){
+	        if(players[p].authToken == authToken)
+	            return players[p];
+	    };
+	    ui.log(util.format("ERROR: Unable to find Player by token: %s", authToken ))
 	    return null;
 	},
 
@@ -275,13 +301,22 @@ io.on('connection', function onConnection(client) {
 		if (data.type) {
 			switch (data.type) {
 				case msgType.PING:
-					server.pingPlayer(client, data);
+					// server.pingPlayer(client, data);
 					break;
 				case msgType.AUTH:
 					server.authPlayer(client, data);
 					break;
-				case msgType.MOVE_SHIP:
-					server.updateShipLoc(client.id, data.i, data.p);
+				case msgType.UPDATE_USER:
+					server.updateUser(client, data)
+					ui.log("Update User : "+data.t)
+					break;
+				case msgType.UPDATE_SPACE:
+					ui.log("Update Space : "+data.t)
+					server.updateSpace(client, data);
+					break;
+				case msgType.UPDATE_SHIP:
+					ui.log("Udpte ship")
+					server.updateShipLoc(server, data, data.s.id, data.s.w);
 					break;
 				case msgType.ERROR: 
 					ui.log(data.t);
