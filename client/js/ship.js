@@ -41,8 +41,8 @@ Ship.prototype.setWaypoint = function(target) {
                            };
 
     // Adjust for orbit
-    this.waypoint.plot.x -= this.waypoint.vector.x * (target.radius + 1);
-    this.waypoint.plot.y -= this.waypoint.vector.y * (target.radius + 1);
+    this.waypoint.plot.x -= this.waypoint.vector.x * (target.radius + 2.5);
+    this.waypoint.plot.y -= this.waypoint.vector.y * (target.radius + 2.5);
     this.waypoint.distance = helper.calculateDistance(this.waypoint.plot, this.waypoint.origin);
 
     this.heading = helper.calculateAngle(this.waypoint.origin, this.waypoint.plot);
