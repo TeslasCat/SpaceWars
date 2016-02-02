@@ -36,28 +36,74 @@ $(function() {
 
     // Add a new planet
     game.planets = [];
-    var /**/ tmpPlanet,
-        /**/ tmpMoon,
-        /**/ planetNames = ['ALPHA', 'GAMMA', 'BETA'];
 
 
-    tmpPlanet = new Planet('Avoid', { x: 15, y: 50}, 5);
-    game.planets.push(tmpPlanet);
+    // Generate random planets
+    var tmpPlanet;
+    for (var i = 0; i < 100; i++) {
 
-    tmpPlanet = new Planet('Hello', { x: 100, y: 100}, 5);
-    game.planets.push(tmpPlanet);
+        var distance = 1,
+            tmpPlanet,
+            n = 0;
+        while (distance < 500) {
+            n++
+            if (n > 10) break;
+            tmpPlanet = new Planet('Planet' + i, { x: 2000 - helper.rand(0, 4000), y: 1000 - helper.rand(0, 2000)}, helper.rand(5, 30));
 
+            // Find closest planets
+            var closest = helper.getClosestPlanet(tmpPlanet.getPlot(), tmpPlanet.radius);
+            if (closest) {
+                distance = closest.distance;
+            } else {
+                distance = 1000;
+            }
+        }
+
+        game.planets.push(tmpPlanet);
+    }
+
+
+    $('#login input').on('keydown', function(e) {
+        var keyCode = e.keyCode || e.which;
+
+        if (keyCode == 13) {
+            e.preventDefault();
+            login();
+        }
+    });
 
     $('#login .button').on('click', function(e) {
         e.preventDefault();
+        login();
+    });
+
+    function login() {
         $('#login').addClass('hidden');
         setTimeout(function() {
             var username = $('#login input[name=username]').val(),
                 password = $('#login input[name=password]').val();
             // Login user
-            conn.sendMsg(msgType.AUTHENTICATE, { u: username, p: password});
+            conn.sendMsg(msgType.AUTHENTICATE, { u: username, p: password}, function() {
+                alert('Stuff and stuff');
+
+                $('#login').remove();
+
+                game.the_player = new Player(conn.socket.id, data.n, data.s, data.t);
+
+                console.log("You're authed as: %s", data.n);
+
+                for(var i in data.s){
+                    var ship = new Ship(data.s[i].name, data.s[i].plot);
+                    game.ships.push(ship);
+                }
+
+                game.start();
+            }, function() {
+                alert('Not connected to server');
+                $('#login').addClass('error').removeClass('hidden');
+            });
         }, 1000);
-    });
+    }
 
 
     // setTimeout(function() {

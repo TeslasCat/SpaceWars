@@ -21,22 +21,71 @@ var conn = {
     socket : io("/"),
 
     /**
+     * Sequential message ID
+     */
+    messageID : 0,
+
+    /**
+     * Callbacks store for messages that have yet to recieve a reply
+     */
+    callbacks : [],
+
+    /**
      * Format Messages using BISON encoding.
      */
     formatMsg: function(type, args) {
         var msg = {type: type};
 
         for (var arg in args) {
+            // Add in message ID
+            msg["id"] = conn.messageID;
+
+            console.log(msg["id"]);
+
+            // Increment message ID for next message
+            conn.messageID++;
+
             // Don't overwrite the message type
-            if (arg != "type")
+            if (arg != "type" && arg != "id") {
                 msg[arg] = args[arg];
+            }
         };
 
         return BISON.encode(msg);
     },
 
-    sendMsg: function(type, data) {
-        conn.socket.send(conn.formatMsg(type, data));
+    sendMsg: function(type, data, callback, errorCallback) {
+        if (conn.socket.connected) {
+            // Add callbacks
+            conn.queueCallbacks(conn.messageID, callback, errorCallback);
+
+            // Send message
+            conn.socket.send(conn.formatMsg(type, data));
+        } else {
+            // Do error callback by default if not connected
+            if (errorCallback) {
+                errorCallback();
+            }
+        }
+    },
+
+    queueCallbacks: function(messageID, callback, errorCallback) {
+        var tmpCallbacks = {};
+
+        // TODO: check success callback is a callable function
+        if (callback && typeof callback === 'function') {
+            tmpCallbacks.success = callback;
+        }
+
+        // TODO: check error callback is a callable function
+        if (errorCallback && typeof errorCallback === 'function') {
+            tmpCallbacks.error = errorCallback;
+        }
+
+        // Check that at least one callback has been added
+        if (tmpCallbacks.length) {
+            conn.callbacks[messageID] = tmpCallbacks;
+        }
     },
 
     getPlayerBySocketID: function(id) {
@@ -62,7 +111,14 @@ conn.socket.on('connect', function() {
 
         /* DEBUG */
         // console.log(msg, data);
-        
+
+
+        // Call callback if response contains the original message ID
+        if (data.id && conn.callbacks[data.id] && conn.callbacks[data.id].success) {
+            conn.callbacks[data.id].success(data);
+        }
+
+        // Call default functions
         if (data.type) {
             switch (data.type) {
                 case msgType.PING:
@@ -100,25 +156,6 @@ conn.socket.on('connect', function() {
 
                     console.log("Player has disconnected: %s %s", p.name, p.id);
                     game.players.splice(game.players.indexOf(p), 1);
-                    break;
-                case msgType.AUTHENTICATION_PASSED:
-                    $('#login').remove();
-
-                    game.the_player = new Player(conn.socket.id, data.n, data.s, data.t);
-
-                    console.log("You're authed as: %s", data.n);
-
-                    for(var i in data.s){
-                        var ship = new Ship(data.s[i].name, data.s[i].plot);
-                        game.ships.push(ship);
-                    }
-
-                    game.start();
-                    break;
-                case msgType.AUTHENTICATION_FAILED:
-                    $('#login').addClass('error').removeClass('hidden');
-
-                    console.log("Failed to Auth player. Check username and password.");
                     break;
             }
         }

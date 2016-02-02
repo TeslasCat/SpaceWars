@@ -184,7 +184,7 @@ var helper = {
         }
     },
 
-    getClosestPlanet: function(plot) {
+    getClosestPlanet: function(plot, radius) {
         var closest,
             distance;
 
@@ -194,6 +194,9 @@ var helper = {
             var tmpDistance = helper.calculateDistance(plot, object.plot);
             if (!closest || tmpDistance < distance) {
                 distance = tmpDistance;
+                if (radius) {
+                    distance /= object.radius > radius ? object.radius : radius;
+                }
                 closest = object;
             }
         }

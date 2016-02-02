@@ -19,7 +19,7 @@ Moon.prototype.draw = function() {
     context.save();
 
     context.lineWidth = 1;
-    context.fillStyle="#1E1E1E";
+    context.fillStyle = "#1E1E1E";
     context.strokeStyle = 'rgba(150, 200, 255, 0.3)';
 
     context.beginPath();
