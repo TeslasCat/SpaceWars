@@ -188,7 +188,6 @@ var server = {
 
 		for(var i in ships){
 			if(ships[i].id == shipID){
-				// TODO: Work out ETA 
 				ui.log(util.format("Ship moves %s to [%s|%s]", ships[i].name, plot.x, plot.y));
 				server.broadcast_excluded(playerID, server.formatMsg(msgType.MOVE_SHIP, {i: id, s: ships[i].id, l: plot }));
 			}
