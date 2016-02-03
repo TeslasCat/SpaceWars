@@ -19,7 +19,7 @@ var conn = {
     /**
      * Init Connection to Server.
      */ 
-    socket : io("10.42.0.1"),
+    socket : io("/"),
 
     /**
      * Sequential message ID

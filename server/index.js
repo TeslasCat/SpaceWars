@@ -67,7 +67,7 @@ var server = {
 		playersDB.find({}, function (err, res) {
 			if (res.length != 0) {
 				for(var i in res){
-					players.push(new Player(res[i].id, null, null, res[i].name, res[i].user_name));
+					players.push(new Player(res[i].id, null, res[i].name, res[i].user_name));
 				}
 			} else {
 				ui.log("ERROR: Unable to load players.");
@@ -130,46 +130,21 @@ var server = {
 	 *
 	 */
 	authPlayer: function(socket, messageID, userName, password) {
-		playersDB.find({ $and: [{user_name: userName }, {password: password}] }, function auth_user(err, res) {
+		playersDB.find({ $and: [{user_name: userName }, {password: password}] }, function (err, res) {
 			if (!err && res.length === 1) {
-					// TODO: Maybe move this into the player class. player.getAuthToken(); ?
-					var authToken = server.generateToken();
 					var p = server.getPlayerByUserName(userName);
 					if(!p){
 						return;
 					}
-					p.authToken = authToken;
 					p.socket = socket.id;
 
-					socket.send(server.formatMsg(msgType.AUTH, {id: messageID, code: 1.1, t:  authToken }));
+					socket.send(server.formatMsg(msgType.AUTH, {id: messageID, code: 1.1, t:  p.getAuthToken() }));
 					ui.log(util.format("AUTH SUCCESS: %s [%s]", userName, socket.id));
 			} else {
 				socket.send(server.formatMsg(msgType.AUTH, {id: messageID, code: 0.1 }))
 				ui.log(util.format("AUTH FAIL: ", data.id, data.u, socket.id));
 			};
 		});
-	},
-
-
-
-	generateToken: function(){
-		var rtn = null;
-		require('crypto').randomBytes(48, function(ex, buf){ rtn = buf.toString('hex')});
-		return rtn;
-	},
-
-	/**
-	 *
-	 */
-	newPlayer: function(socket, data) {
-		// var player = new Player(data.id, socket.id, data.t, data.n);
-		// players.push(player);
-		
-		// for(var i in data.s){
-		// 	ships.push(data.s[i]);
-		// }
-		// server.sendPing(socket);
-		ui.log("newPlayer: Dont call me");
 	},
 
 	/**
@@ -187,16 +162,17 @@ var server = {
 				if(p == null)
 					continue;
 
-				if(p.socket == null)
+				if(p.socket == null){
 					continue;
-				
-				/* If player does not respond in 30s */
-				if(p.age > 6){
-					ui.log(util.format("CLOSE [TIME OUT]: ", p.name, p.id));
+				}
 
-					for(var id in socks.sockets.sockets){
-						if(p.id == socks.sockets.sockets[id].id) {
-							socks.sockets.sockets[id].disconnect();
+				/* If player does not respond in 60s */
+				if(p.age > 12){
+					ui.log(util.format("CLOSE [TIME OUT]: ", p.name, p.socket));
+
+					for(var i in socks.sockets.sockets){
+						if(p.socket == socks.sockets.sockets[i].id) {
+							socks.sockets.sockets[i].disconnect();
 						}
 					}
 
@@ -206,15 +182,6 @@ var server = {
 			}
 		}, 5000); /* 5s */
 	},
-
-	/**
-	 *
-	 */
-	// initObjectActivity: function(objects, socks) {
-	// 	setInterval(function() {
-	// 		// ui.log(JSON.stringify(objects))
-	// 	}, 1000); /* 1s */
-	// },
 
 	updateShipLoc: function(socket, messageID, shipID, waypoint){
 		// TODO: Confirm move is legal.
@@ -231,12 +198,16 @@ var server = {
 		ui.log("ERROR: updateShiploc unable to find shipID in memory.");
 	},
 
-	updateUser: function(socks, data){
-		var p = server.getPlayerByAuthToken(data.t);
-		var playerShips = server.getShipsByPlayer(data.t);
+	updateUser: function(socks, messageID, authToken){
+		var p = server.getPlayerByAuthToken(authToken);
 
+		var userShips = ships.filter(function(ship){
+			if(ship.owner == p.id){
+				return true;
+			}
+		});
 
-		socks.send(server.formatMsg(msgType.UPDATE_USER, {id: data.id, user: {id: data.dbid, n: p.name}, s: playerShips}));
+		socks.send(server.formatMsg(msgType.UPDATE_USER, {id: messageID, user: {id: p.id, n: p.name}, s: userShips}));
 
 	},
 
@@ -249,11 +220,10 @@ var server = {
 		var p = server.getPlayerByAuthToken(authToken);
 		var rtn = [];
 		for(var i in ships){
-			if(ships[i].owner = p.dbid){
+			if(ships[i].owner = p.id){
 				rtn.push(ships[i]);
 			}
 		}
-		ui.log("shitps by player: "+ rtn)
 		return rtn;
 	},
 
@@ -266,6 +236,11 @@ var server = {
 		ui.log("ERROR: Unable to find player by UserName.");
 	},
 
+	isOnline: function(player){
+		if(player.socket)
+			return true
+	},
+
 	/**
 	 * Starts the Server Monitoring functions.
 	 *
@@ -276,7 +251,7 @@ var server = {
 	 */
 	initServerMonitor: function(players, socks) {
 		setInterval(function() {
-			ui.updatePlayerList(players);
+			ui.updatePlayerList(players.filter(function(p){if(p.socket)return true;}));
 		}, 1000); /* 1s */
 	},
 
@@ -289,7 +264,7 @@ var server = {
 	 */
 	getPlayerBySocketID: function(id) {
 	    for(var p in players){
-	        if(players[p].id == id)
+	        if(players[p].socket == id)
 	            return players[p];
 	    };
 	    ui.log(util.format("ERROR: Unable to find Player: %s", id ))
@@ -360,27 +335,35 @@ io.on('connection', function onConnection(client) {
     client.on('message', function handleMessage(msg) {
 		var data = BISON.decode(msg);
 		if (data.type) {
+
+			// replace rubbish ping with this for now.
+			var p = server.getPlayerBySocketID(client.id);
+			if(p){
+				p.age = 0;
+			}
+
 			switch (data.type) {
 				case msgType.PING:
+					ui.log("Recv: PING")
 					// server.pingPlayer(client, data);
 					break;
 				case msgType.AUTH:
-					ui.log("Auth Player");
+					ui.log("Recv: AUTH");
 					server.authPlayer(client, data.id, data.u, data.p);
 					break;
 				case msgType.UPDATE_USER:
-					ui.log("Update User");
-					server.updateUser(client, data)
+					ui.log("Recv: Update User");
+					server.updateUser(client, data.id, data.t)
 					break;
 				case msgType.UPDATE_SPACE:
-					ui.log("Update Space");
+					ui.log("Recv: Update Space");
 					server.updateSpace(client, data);
 					break;
 				case msgType.UPDATE_SHIP:
-					ui.log("Update ship");
+					ui.log("Recv: Update ship");
 					server.updateShipLoc(client, data.id, data.s.id, data.s.w);
 					break;
-				case msgType.ERROR: 
+				case msgType.ERROR:
 					ui.log(data.t);
 					break;
 			};
@@ -391,16 +374,12 @@ io.on('connection', function onConnection(client) {
     });
 
 	client.on("disconnect", function onDisconnect() {
-		var removePlayer = server.getPlayerBySocketID(this.id);
+		var removePlayer = server.getPlayerBySocketID(client.id);
 
-		if (!removePlayer) {
-			ui.log("Player not found: ", this.id);
-			return;
+		if (removePlayer) {
+			removePlayer.socket = null;
+			ui.log(util.format("Player has disconnected: ", removePlayer.name, this.id));
 		};
 		
-		ui.log(util.format("Player has disconnected: ", removePlayer.name, this.id));
-		players.splice(players.indexOf(removePlayer), 1);
-		// Broadcast removed player to connected socket clients
-		io.send(server.formatMsg(msgType.REMOVE_PLAYER, {i: this.id}));
 	});
 });

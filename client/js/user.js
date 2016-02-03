@@ -5,6 +5,7 @@ var User = function(token) {
     	var self = this;
 
         if (!this.token) {
+            // TODO: Is this meant to work?
             console.err('Trying to update user when not authed');
         }
 
@@ -14,10 +15,11 @@ var User = function(token) {
 
             console.log("You're authed as: %s", this.name);
 
-            for(var i in data.s) {
-                var ship = new Ship(data.s[i].name, data.s[i].plot);
-                game.ships.push(ship);
-            }
+            // TODO: See game.js:22 - Update existing objects (ships), or create new objects (ships).
+            // for(var i in data.s) {
+            //     var ship = new Ship(data.s[i].name, data.s[i].plot);
+            //     game.ships.push(ship);
+            // }
 
             game.start();
         });

@@ -19,6 +19,8 @@ var game = {
     },
     updateSpace: function() {
         conn.sendMsg(msgType.UPDATE_SPACE, {}, function(data) {
+            // TODO: Update existing objects (ships), or create new objects (ships).
+            
             // Add ships to game
             for (var n = 0; n < data.s.length; n++) {
                 var s = data.s[n],

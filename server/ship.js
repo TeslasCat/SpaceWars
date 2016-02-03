@@ -17,4 +17,8 @@ var Ship = function(id, owner, name, plot, speed) {
     return this;
 };
 
+Ship.prototype.toString = function() {
+    return "SHIP: " + this.name + " [" + this.plot.x + "/" + this.plot.y + "]";
+}
+
 module.exports = Ship;
