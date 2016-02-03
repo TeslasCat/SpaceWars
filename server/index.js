@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+"use strict";
 
 process.title = "SpaceWars";
 
@@ -12,12 +13,10 @@ var util = require("util");
 var names = require('./random-name');
 
 /* Some of our Stuff */
-var UI = require ('./ui.js');
+var ui = require ('./ui.js');
 var Player = require("./Player");
 var BISON = require("./bison");
 var Ship = require("./ship");
-
-"use strict";
 
 /**
  * Message protocols
@@ -50,10 +49,10 @@ var msgType = {
 // 	], function (err, newDocs) {
 // });
 
-ui = new UI();
-players = [];
-planets = [];
-ships = [];
+var ui = new ui();
+var players = [];
+var planets = [];
+var ships = [];
 
 io.serveClient(false);
 io.listen(8000);
@@ -63,6 +62,7 @@ var serverStart = new Date().getTime();
 var server = {
 
 	init: function(){
+		var rtn = true;
 		ui.log("Loading Players");
 		playersDB.find({}, function (err, res) {
 			if (res.length != 0) {
@@ -71,7 +71,7 @@ var server = {
 				}
 			} else {
 				ui.log("ERROR: Unable to load players.");
-				return false;
+				rtn = false;
 			};
 		});
 
@@ -83,10 +83,10 @@ var server = {
 				}
 			} else {
 				ui.log("ERROR: Unable to load ships.");
-				return false;
+				rtn = false;
 			};
 		});
-		return true;
+		return rtn;
 	},
 
 	/**
@@ -142,7 +142,7 @@ var server = {
 					ui.log(util.format("AUTH SUCCESS: %s [%s]", userName, socket.id));
 			} else {
 				socket.send(server.formatMsg(msgType.AUTH, {id: messageID, code: 0.1 }))
-				ui.log(util.format("AUTH FAIL: ", data.id, data.u, socket.id));
+				ui.log(util.format("AUTH FAIL: ", userName, socket.id));
 			};
 		});
 	},
@@ -267,7 +267,7 @@ var server = {
 	        if(players[p].socket == id)
 	            return players[p];
 	    };
-	    ui.log(util.format("ERROR: Unable to find Player: %s", id ))
+	    ui.log(util.format("ERROR: Unable to find Player by Socket: %s", id ))
 	    return null;
 	},
 

@@ -1,3 +1,5 @@
+"use strict";
+
 var Player = function(id, socket, name, userName){
 	this.id = id;
 	this.socket = socket; 

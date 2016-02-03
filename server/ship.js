@@ -1,3 +1,5 @@
+"use strict";
+
 var Ship = function(id, owner, name, plot, speed) {
     this.id = id;
     this.owner = owner;

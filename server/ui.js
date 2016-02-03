@@ -1,3 +1,5 @@
+"use strict";
+
 var blessed = require('blessed');
 var util    = require('util');
 
