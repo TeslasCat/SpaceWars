@@ -3,10 +3,6 @@
 
 process.title = "SpaceWars";
 
-var Datastore = require('nedb')
-var playersDB = new Datastore({ filename: 'data/players', autoload: true });
-var shipsDB = new Datastore({ filename: 'data/ships', autoload: true });
-
 var io = require('socket.io')();
 var util = require("util");
 
@@ -18,6 +14,24 @@ var Player = require("./Player");
 var BISON = require("./bison");
 var Ship = require("./ship");
 
+var redis = require("redis");
+var db = redis.createClient({port: 6370});
+
+// var p = new Player(1,"pfft I guess so","Pete", "User_a");
+
+db.on("error", function (err) {
+    console.log("Error " + err);
+});
+
+// db.sadd("players", p, redis.print)
+db.smembers("players", function(err, reply) {
+    // reply is null when the key is missing
+    console.log(err)
+    console.log(reply);
+});
+db.quit();
+
+return 1;
 /**
  * Message protocols
  */
