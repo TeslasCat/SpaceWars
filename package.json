@@ -1,17 +1,17 @@
 {
   "name": "spacewars",
   "version": "0.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "A Sci-Fi space game ¯\_(ツ)_/¯",
+  "main": "server/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "sh start.sh"
+    "start": "node server/index.js 2> server/logs "
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/TeslasCat/spacewars"
   },
-  "author": "",
+  "author": "Tesla's Cat Macak",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/TeslasCat/spacewars/issues"
@@ -19,7 +19,6 @@
   "dependencies": {
     "blessed": "^0.1.81",
     "config": "^1.17.1",
-    "nedb": "^1.5.1",
     "redis": "^2.4.2",
     "socket.io": "^1.3.7"
   }
