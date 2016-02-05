@@ -5,10 +5,7 @@ process.title = "SpaceWars";
 
 var io = require('socket.io')();
 var util = require("util");
-
 var names = require('./random-name');
-
-/* Some of our Stuff */
 var ui = require ('./ui.js');
 var Player = require("./Player");
 var BISON = require("./bison");
@@ -17,21 +14,6 @@ var Ship = require("./ship");
 var redis = require("redis");
 var db = redis.createClient({port: 6370});
 
-// var p = new Player(1,"pfft I guess so","Pete", "User_a");
-
-db.on("error", function (err) {
-    console.log("Error " + err);
-});
-
-// db.sadd("players", p, redis.print)
-db.smembers("players", function(err, reply) {
-    // reply is null when the key is missing
-    console.log(err)
-    console.log(reply);
-});
-db.quit();
-
-return 1;
 /**
  * Message protocols
  */
@@ -47,22 +29,6 @@ var msgType = {
 	ERROR : -1,
 }
 
-/* TODO: Setup auto ID */
-// playersDB.insert(
-// 	[
-// 		{id: "1", user_name: "user_a", password: "open-the-gate", name: "Pete"},
-// 		{id: "2", user_name: "user_b", password: "open-the-gate", name: "Luke"}
-// 	], function (err, newDocs) {
-// });
-
-// shipsDB.insert(
-// 	[	
-// 		{id: "1", owner: "2", name: "FR00001", plot: {x: 0, y: 0}, speed: 1000},
-// 		{id: "2", owner: "1", name: "The_Flying_Cat", plot: {x: 10, y: 15}, speed: 1230}, 
-// 		{id: "3", owner: "1", name: "Dark_Kitten_Matter" , plot: {x: 20, y: 35}, speed: 10}
-// 	], function (err, newDocs) {
-// });
-
 var ui = new ui();
 var players = [];
 var planets = [];
@@ -76,31 +42,60 @@ var serverStart = new Date().getTime();
 var server = {
 
 	init: function(){
-		var rtn = true;
-		ui.log("Loading Players");
-		playersDB.find({}, function (err, res) {
-			if (res.length != 0) {
-				for(var i in res){
-					players.push(new Player(res[i].id, null, res[i].name, res[i].user_name));
-				}
-			} else {
-				ui.log("ERROR: Unable to load players.");
-				rtn = false;
-			};
-		});
+		// next_user_id
+		// users - username ID
+		// auths - authToken ID
+		// user:n - socket, username, name, email, password, authToken
+		server.register("socket00", "Zim", "Pete", "amail@gmail.com", "windows")
+		server.register("socket01", "Xim", "Luke", "soemthing@gmail.com", "cat");
+		server.register("socket02", "Marven", "James", "specifc@gmail.com", "dog");
+		server.register("socket03", "Steve", "John", "apples@gmail.com", "something");
 
-		ui.log("Loading Ships");
-		shipsDB.find({}, function (err, res) {
-			if (res.length != 0) {
-				for(var i in res){
-					ships.push(new Ship(res[i].id, res[i].owner, res[i].name, res[i].plot, res[i].speed));
-				}
-			} else {
-				ui.log("ERROR: Unable to load ships.");
-				rtn = false;
-			};
+    	// next_ship_id
+    	// ships - name ID
+    	// shipsOwner - owner ID 
+		// ship:n - owner, name, size, speed, plot, viewDistane, shape
+		server.newShip(1, "Dark_Kitten_Matter", 1, 1000, {x: 0, y: 0}, 10, [[-0.5, 1], [0, -1], [0.5, 1]]);
+	},
+
+	/**
+	 *
+	 */
+	newShip: function(owner, name, size, speed, plot, viewDistane, shape){
+		db.exists("ships", name, function(err, res){ 
+			if(res) {
+				ui.log("Ship already exists.");
+				return false
+			}
+			db.incr("next_ship_id", function(err, ID){
+				// Serialise plot and shape data before placing in DB.
+				db.hmset("ship:"+ID, "owner", owner, "name", name, "size", size, "speed", speed, "plot", plot, "viewDistane", viewDistane, "shape", shape);
+				db.hset("shipsOwner", owner, ID);
+				db.hset("ships", name, ID);
+				ui.log("NEWSHIP: " + name + " " + ID);
+			});
 		});
-		return rtn;
+	},
+
+	/**
+	 *
+	 */
+	register: function(socket, username, name, email, password){
+		// Check username exists.
+		db.exists("users", username, function(err, res){ 
+			if(res) {
+				ui.log("Account already exists.");
+				return false
+			}
+
+			db.incr("next_user_id", function(err, ID){
+				var authToken = require('crypto').randomBytes(256).toString('hex');
+				db.hmset("user:"+ID, "socket", socket, "username", username, "name", name, "email", email, "password", password, "authToken", authToken);
+				db.hset("users", username, ID);
+				db.hset("auths", authToken, ID);
+				ui.log("REGISTER: " + username);
+			});
+		});
 	},
 
 	/**
@@ -144,20 +139,23 @@ var server = {
 	 *
 	 */
 	authPlayer: function(socket, messageID, userName, password) {
-		playersDB.find({ $and: [{user_name: userName }, {password: password}] }, function (err, res) {
-			if (!err && res.length === 1) {
-					var p = server.getPlayerByUserName(userName);
-					if(!p){
-						return;
-					}
-					p.socket = socket.id;
+		db.hmget("users", userName, function(err, ID){
+			if(ID <= 0 || err){
+				socket.send(server.formatMsg(msgType.AUTH, {id: messageID, code: 0.1 }));
+				ui.log("Unable to Auth.");
+				return
+			}
 
-					socket.send(server.formatMsg(msgType.AUTH, {id: messageID, code: 1.1, t:  p.getAuthToken() }));
-					ui.log(util.format("AUTH SUCCESS: %s [%s]", userName, socket.id));
-			} else {
-				socket.send(server.formatMsg(msgType.AUTH, {id: messageID, code: 0.1 }))
-				ui.log(util.format("AUTH FAIL: ", userName, socket.id));
-			};
+			db.hgetall("user:"+ID, function(err, res){
+				if(!err && res.password == password){
+					db.hmset("user:"+ID, "socket", socket.id);
+					socket.send(server.formatMsg(msgType.AUTH, {id: messageID, code: 1.1, t:  res.authToken }));
+					ui.log(util.format("AUTH SUCCESS: %s [%s]", res.username, res.email));
+				}else{
+					socket.send(server.formatMsg(msgType.AUTH, {id: messageID, code: 0.1 }));
+					ui.log("Unable to Auth.");
+				}
+			});
 		});
 	},
 
@@ -337,9 +335,7 @@ var server = {
 	}
 };
 
-if(server.init()){
-	ui.log("Data loaded into memory.");
-}
+server.init();
 server.initPlayerActivityMonitor(players, io);
 server.initServerMonitor(players, io);
 
@@ -360,6 +356,9 @@ io.on('connection', function onConnection(client) {
 				case msgType.PING:
 					ui.log("Recv: PING")
 					// server.pingPlayer(client, data);
+					break;
+				case msgType.REGISTER:
+					server.register(client, data.userName, data.name, data.email, data.password);
 					break;
 				case msgType.AUTH:
 					ui.log("Recv: AUTH");

@@ -1,11 +1,11 @@
 {
   "name": "spacewars",
   "version": "0.0.0",
-  "description": "A Sci-Fi space game ¯\_(ツ)_/¯",
+  "description": "A Sci-Fi space game.",
   "main": "server/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server/index.js 2> server/logs "
+    "start": "node server/index.js "
   },
   "repository": {
     "type": "git",
