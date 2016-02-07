@@ -11,6 +11,7 @@ var Player = require("./Player");
 var BISON = require("./bison");
 var Ship = require("./ship");
 
+var bluebird = require("bluebird");
 var redis = require("redis");
 var db = redis.createClient({port: 6370});
 
@@ -39,38 +40,51 @@ io.listen(8000);
 ui.setFooter("Server listening on 8000");
 var serverStart = new Date().getTime();
 
+db.on("error", function (err) {
+    ui.log(err);
+});
+
+
 var server = {
 
 	init: function(){
 		// next_user_id
 		// users - username ID
 		// auths - authToken ID
+		// conections - socketID ID
 		// user:n - socket, username, name, email, password, authToken
-		server.register("socket00", "Zim", "Pete", "amail@gmail.com", "windows")
-		server.register("socket01", "Xim", "Luke", "soemthing@gmail.com", "cat");
-		server.register("socket02", "Marven", "James", "specifc@gmail.com", "dog");
-		server.register("socket03", "Steve", "John", "apples@gmail.com", "something");
+		// *
+		server.register("Zim", "Pete", "amail@gmail.com", "windows")
+		server.register("Xim", "Luke", "something@gmail.com", "cat");
+		server.register("Marven", "James", "specific@gmail.com", "dog");
+		server.register("Steve", "John", "apples@gmail.com", "something");
+		server.register("user_b", "Zorg", "zorg@empire.com", "open-the-gate");
 
     	// next_ship_id
     	// ships - name ID
     	// shipsOwner - owner ID 
 		// ship:n - owner, name, size, speed, plot, viewDistane, shape
-		server.newShip(1, "Dark_Kitten_Matter", 1, 1000, {x: 0, y: 0}, 10, [[-0.5, 1], [0, -1], [0.5, 1]]);
+		// *
+		server.newShip(5, "Dark_Kitten_Matter", 1, 1000, {x: 0, y: 0}, 10, [[-0.5, 1], [0, -1], [0.5, 1]]);
+		server.newShip(5, "Intrepid_Puss", 1, 1000, {x: 10, y: 20}, 10, [[-0.5, 1], [0, -1], [0.5, 1]]);
+		server.newShip(2, "FR00001", 1, 1000, {x: 10, y: 20}, 10, [[-0.5, 1], [0, -1], [0.5, 1]]);
+		server.newShip(2, "FR00002", 1, 1000, {x: 10, y: 20}, 10, [[-0.5, 1], [0, -1], [0.5, 1]]);
 	},
 
 	/**
 	 *
 	 */
 	newShip: function(owner, name, size, speed, plot, viewDistane, shape){
-		db.exists("ships", name, function(err, res){ 
-			if(res) {
+		db.hexists("ships", name, function(err, res){ 
+			if(res == 1) {
 				ui.log("Ship already exists.");
 				return false
 			}
 			db.incr("next_ship_id", function(err, ID){
-				// Serialise plot and shape data before placing in DB.
-				db.hmset("ship:"+ID, "owner", owner, "name", name, "size", size, "speed", speed, "plot", plot, "viewDistane", viewDistane, "shape", shape);
-				db.hset("shipsOwner", owner, ID);
+				// TODO: Serialise plot and shape data before placing in DB.
+				db.hmset("ship:"+ID, "owner", owner, "name", name, "size", size, "speed", speed, 
+					"x", plot.x, "y", plot.y, "viewDistane", viewDistane, "shape", shape);
+				db.sadd("user:" + owner + ":ships", ID);
 				db.hset("ships", name, ID);
 				ui.log("NEWSHIP: " + name + " " + ID);
 			});
@@ -80,9 +94,9 @@ var server = {
 	/**
 	 *
 	 */
-	register: function(socket, username, name, email, password){
+	register: function(username, name, email, password){
 		// Check username exists.
-		db.exists("users", username, function(err, res){ 
+		db.hexists("users", username, function(err, res){ 
 			if(res) {
 				ui.log("Account already exists.");
 				return false
@@ -90,7 +104,7 @@ var server = {
 
 			db.incr("next_user_id", function(err, ID){
 				var authToken = require('crypto').randomBytes(256).toString('hex');
-				db.hmset("user:"+ID, "socket", socket, "username", username, "name", name, "email", email, "password", password, "authToken", authToken);
+				db.hmset("user:"+ID, "username", username, "name", name, "email", email, "password", password, "authToken", authToken);
 				db.hset("users", username, ID);
 				db.hset("auths", authToken, ID);
 				ui.log("REGISTER: " + username);
@@ -148,7 +162,7 @@ var server = {
 
 			db.hgetall("user:"+ID, function(err, res){
 				if(!err && res.password == password){
-					db.hmset("user:"+ID, "socket", socket.id);
+					db.hset("connections", socket.id, ID);
 					socket.send(server.formatMsg(msgType.AUTH, {id: messageID, code: 1.1, t:  res.authToken }));
 					ui.log(util.format("AUTH SUCCESS: %s [%s]", res.username, res.email));
 				}else{
@@ -211,21 +225,40 @@ var server = {
 	},
 
 	updateUser: function(socks, messageID, authToken){
-		var p = server.getPlayerByAuthToken(authToken);
-
-		var userShips = ships.filter(function(ship){
-			if(ship.owner == p.id){
-				return true;
-			}
+		db.hget("auths", authToken, function(err, ID){
+			db.hgetall("user:"+ID, function(err, user){
+				socks.send(server.formatMsg(msgType.UPDATE_USER, {id: messageID, user: {id: ID, n: user.name}, s: server.getUserShips(ID)}));
+			});
 		});
-
-		socks.send(server.formatMsg(msgType.UPDATE_USER, {id: messageID, user: {id: p.id, n: p.name}, s: userShips}));
-
 	},
 
 	updateSpace: function(socks, data){
 		// TODO: Remove non-relevant data from the ships to streamline resources.
-		socks.send(server.formatMsg(msgType.UPDATE_SPACE, {id: data.id, s: ships}));
+		db.get("next_ship_id", function(err, totalShips){
+			var ships = [];
+			for(var shipID = 1; shipID <= totalShips; shipID++){
+				db.hgetall("ship:"+shipID, function(err, ship){
+					var s = new Ship(shipID, ship.owner, ship.name, {x: ship.x, y: ship.y}, ship.speed)
+					ships.push(s)
+				});
+					ui.log("UPSACE:"+ships)
+					socks.send(server.formatMsg(msgType.UPDATE_SPACE, {id: data.id, s: ships}));			
+			}
+		});
+	},
+
+	getUserShips: function(userID){
+		var rtn = []
+		db.smembers("user:"+userID+":ships", function(err, res){
+			res.forEach(function (reply, index) {
+           		db.hgetall("ship:"+reply.toString(), function(err, res){
+           			rtn.push(new Ship(reply.toString(), res.owner, res.name, { x: res.x, y: res.y }, res.speed));
+           			ui.log(rtn);
+           		});
+   			// rtn dies here.
+       		})
+		});
+		return rtn;
 	},
 
 	getShipsByPlayer: function(authToken) {
@@ -340,24 +373,18 @@ server.initPlayerActivityMonitor(players, io);
 server.initServerMonitor(players, io);
 
 io.on('connection', function onConnection(client) {
-	ui.log("CONNECT: " + client.id);
+	// ui.log("CONNECT: " + client.id);
 
     client.on('message', function handleMessage(msg) {
 		var data = BISON.decode(msg);
 		if (data.type) {
-
-			// replace rubbish ping with this for now.
-			var p = server.getPlayerBySocketID(client.id);
-			if(p){
-				p.age = 0;
-			}
-
 			switch (data.type) {
 				case msgType.PING:
 					ui.log("Recv: PING")
 					// server.pingPlayer(client, data);
 					break;
 				case msgType.REGISTER:
+					ui.log("Recv: Register");
 					server.register(client, data.userName, data.name, data.email, data.password);
 					break;
 				case msgType.AUTH:
@@ -387,12 +414,6 @@ io.on('connection', function onConnection(client) {
     });
 
 	client.on("disconnect", function onDisconnect() {
-		var removePlayer = server.getPlayerBySocketID(client.id);
-
-		if (removePlayer) {
-			removePlayer.socket = null;
-			ui.log(util.format("Player has disconnected: ", removePlayer.name, this.id));
-		};
-		
+		db.del("connections", client.id);
 	});
 });
