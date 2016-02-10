@@ -166,6 +166,10 @@ var server = {
 					db.hset("connections", socket.id, ID);
 					socket.send(server.formatMsg(msgType.AUTH, {id: messageID, code: 1.1, t:  res.authToken }));
 					ui.log(util.format("AUTH SUCCESS: %s [%s]", res.username, res.email));
+
+					// Store user details in socket
+					socket.user = res;
+					socket.user.id = ID;
 				}else{
 					socket.send(server.formatMsg(msgType.AUTH, {id: messageID, code: 0.1 }));
 					ui.log("Unable to Auth.");
@@ -211,18 +215,33 @@ var server = {
 	},
 
 	updateShipLoc: function(socket, messageID, shipID, waypoint){
-		// TODO: Confirm move is legal.
-		for(var i in ships){
-			if(ships[i].id == shipID){
-				ui.log("TODO: Call ship.setWaypoint.");
-				server.broadcast_all(server.formatMsg(msgType.UPDATE_SHIP, {id: messageID, s: {id: shipID, w: waypoint} }));
-				return;
-			}
-		}
+		// Check if user owns ship
+		db.smembers("user:"+socket.user.id+":ships", function(err, userShips) {
+			db.hgetall("ship:"+shipID, function(err, ship) {
+				var owner = false;
+				for(var i in userShips){
+					if (userShips[i] == shipID) {
+						owner = true;
+						break;
+					}
+				}
+				if (owner && ship) {
+					ui.log(ship.x);
+					ui.log(ship.y);
+					server.broadcast_all(server.formatMsg(msgType.UPDATE_SHIP, {id: messageID, s: {id: shipID, plot: {x: ship.x, y: ship.y}, w: waypoint} }));
+					ui.log("Moving ship.");
+				} else if (ship) {
+					ui.log(ship.x);
+					ui.log(ship.y);
+					socket.send(server.formatMsg(msgType.UPDATE_SHIP, {code: 0.2, id: messageID, s: {id: shipID, plot: {x: ship.x, y: ship.y}}}));
+					ui.log("ERROR: ship not owned by user.");
+				} else {
+					socket.send(server.formatMsg(msgType.UPDATE_SHIP, {code: 0.3, id: messageID}));
+					ui.log("ERROR: ship doesn't exist.");
+				}
+			});
+		});
 
-		// If we reach these statements then something has gone wrong.
-		socket.send(server.formatMsg(msgType.UPDATE_SHIP, {code: 0.2, id: messageID}));
-		ui.log("ERROR: updateShiploc unable to find shipID in memory.");
 	},
 
 	updateUser: function(socks, messageID, authToken){

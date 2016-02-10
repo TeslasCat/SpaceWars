@@ -31,6 +31,9 @@ Ship.prototype.scaleShape = function(size) {
 Ship.prototype.getPlot = function() {
     return c(this.plot);
 }
+Ship.prototype.setPlot = function(plot) {
+    this.plot = {x: parseInt(plot.x), y: parseInt(plot.y)}; // Make sure values are integers
+}
 Ship.prototype.setID = function(id) {
     this.id = id;
 };
