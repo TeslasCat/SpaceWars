@@ -5,6 +5,7 @@ var Ship = function(id, name, plot, speed) {
     this.size = 1 / 1000;
     this.speed = speed / 3600 || 1000 / 3600; // Defaults to 1000kmph
     this.plot = plot || {x: 0, y: 0};
+    this.plot = {x: parseInt(this.plot.x), y: parseInt(this.plot.y)}; // Make sure values are integers
     this.viewDistance = 10;
 
     this.shape = [[-0.5, 1], [0, -1], [0.5, 1]];
