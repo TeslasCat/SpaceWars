@@ -42,6 +42,8 @@ var serverStart = new Date().getTime();
 
 db.on("error", function (err) {
     ui.log(err);
+}).on("connect", function (err) {
+    ui.log("Reddis connected");
 });
 
 
@@ -77,7 +79,7 @@ var server = {
 	newShip: function(owner, name, size, speed, plot, viewDistane, shape){
 		db.hexists("ships", name, function(err, res){ 
 			if(res == 1) {
-				ui.log("Ship already exists.");
+				ui.log("Ship already exists [" + name + "]");
 				return false
 			}
 			db.incr("next_ship_id", function(err, ID){
@@ -98,7 +100,7 @@ var server = {
 		// Check username exists.
 		db.hexists("users", username, function(err, res){ 
 			if(res) {
-				ui.log("Account already exists.");
+				ui.log("Account already exists [" + username + "]");
 				return false
 			}
 
@@ -220,45 +222,74 @@ var server = {
 		}
 
 		// If we reach these statements then something has gone wrong.
-		socket.send(formatMsg(msgType.UPDATE_SHIP, {code: 0.2, id: messageID}));
+		socket.send(server.formatMsg(msgType.UPDATE_SHIP, {code: 0.2, id: messageID}));
 		ui.log("ERROR: updateShiploc unable to find shipID in memory.");
 	},
 
 	updateUser: function(socks, messageID, authToken){
 		db.hget("auths", authToken, function(err, ID){
 			db.hgetall("user:"+ID, function(err, user){
-				socks.send(server.formatMsg(msgType.UPDATE_USER, {id: messageID, user: {id: ID, n: user.name}, s: server.getUserShips(ID)}));
+				server.getUserShips(ID, function(ships) {
+					socks.send(server.formatMsg(msgType.UPDATE_USER, {id: messageID, user: {id: ID, n: user.name}, s: ships}));
+				});
 			});
 		});
 	},
 
-	updateSpace: function(socks, data){
+	updateSpace: function(socks, data) {
 		// TODO: Remove non-relevant data from the ships to streamline resources.
-		db.get("next_ship_id", function(err, totalShips){
-			var ships = [];
-			for(var shipID = 1; shipID <= totalShips; shipID++){
-				db.hgetall("ship:"+shipID, function(err, ship){
-					var s = new Ship(shipID, ship.owner, ship.name, {x: ship.x, y: ship.y}, ship.speed)
-					ships.push(s)
-				});
-					ui.log("UPSACE:"+ships)
-					socks.send(server.formatMsg(msgType.UPDATE_SPACE, {id: data.id, s: ships}));			
+		db.get("next_ship_id", function(err, totalShips) {
+			server.getShips(1, [], totalShips, (function (socks, data) {
+				return function(ships) {
+					ui.log("USPACE:"+ships)
+					socks.send(server.formatMsg(msgType.UPDATE_SPACE, {id: data.id, s: ships}));
+				}
+			})(socks, data));
+		});
+	},
+
+	getShips: function(id, ships, maxID, callback) {
+		db.hgetall("ship:"+id, function(err, ship) {
+			if (ship) {
+				var s = new Ship(id, ship.owner, ship.name, {x: ship.x, y: ship.y}, ship.speed)
+				ships.push(s);
+			}
+
+			// Get next ship from ID or callback with ships
+			id++;
+			if (id <= maxID) {
+				server.getShips(id, ships, maxID, callback);
+			} else {
+				callback(ships);
 			}
 		});
 	},
 
-	getUserShips: function(userID){
+	getUserShips: function(userID, callback) {
 		var rtn = []
-		db.smembers("user:"+userID+":ships", function(err, res){
-			res.forEach(function (reply, index) {
-           		db.hgetall("ship:"+reply.toString(), function(err, res){
-           			rtn.push(new Ship(reply.toString(), res.owner, res.name, { x: res.x, y: res.y }, res.speed));
-           			ui.log(rtn);
-           		});
-   			// rtn dies here.
-       		})
+		db.smembers("user:"+userID+":ships", function(err, userShips){
+			server.getUserShipsLookup(0, userShips, [], (function (callback) {
+				return function(ships) { callback(ships) };
+			})(callback));
 		});
 		return rtn;
+	},
+
+	getUserShipsLookup: function(n, userShips, ships, callback) {
+		var shipID = userShips[n];
+		db.hgetall("ship:"+shipID, function(err, ship){
+			if (ship) {
+				var s = new Ship(shipID, ship.owner, ship.name, {x: ship.x, y: ship.y}, ship.speed)
+   				ships.push(s);
+   			}
+
+   			n++;
+			if (n < userShips.length) {
+				server.getUserShipsLookup(n, userShips, ships, callback);
+			} else {
+				callback(ships);
+			}
+   		});
 	},
 
 	getShipsByPlayer: function(authToken) {
