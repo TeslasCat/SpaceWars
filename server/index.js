@@ -12,7 +12,7 @@ var BISON = require("./bison");
 var Ship = require("./ship");
 
 var redis = require("redis");
-var db = redis.createClient({host: 'www.hackthis.co.uk', port: 6370});
+var db = redis.createClient({port: 6379});
 
 /**
  * Message protocols
