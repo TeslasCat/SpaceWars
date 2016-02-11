@@ -1,0 +1,6 @@
+.vagrant/
+node_modules/
+server/logs
+redis*
+config/dev.server.config
+config/dev.client.config

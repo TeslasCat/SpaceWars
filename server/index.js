@@ -1,22 +1,34 @@
 #!/usr/bin/env node
 "use strict";
 
+var enviroment = 'dev';
+
+try {
+	require("../config/"+enviroment+".server.config");
+} catch (e) {
+	console.log("Config error: config/"+enviroment+".server.config not found");
+	process.exit(1);
+}
+
 process.title = "SpaceWars";
 
-var Datastore = require('nedb')
-var playersDB = new Datastore({ filename: 'data/players', autoload: true });
-var shipsDB = new Datastore({ filename: 'data/ships', autoload: true });
-
-var io = require('socket.io')();
 var util = require("util");
 
 var names = require('./random-name');
-
-/* Some of our Stuff */
-var ui = require ('./ui.js');
-var Player = require("./Player");
+var helper = require("../lib/helper");
+var ui = require ('./ui.js'),
+	ui = new ui();
+var Player = require("../lib/player");
 var BISON = require("./bison");
-var Ship = require("./ship");
+var Ship = require("../lib/ship");
+
+var redis = require("redis");
+var db = redis.createClient(global.config.redis);
+
+var http = require("./HTTPserver");
+http = new http(global.config);
+
+var io = require('socket.io')(http.server);
 
 /**
  * Message protocols
@@ -33,60 +45,87 @@ var msgType = {
 	ERROR : -1,
 }
 
-/* TODO: Setup auto ID */
-// playersDB.insert(
-// 	[
-// 		{id: "1", user_name: "user_a", password: "open-the-gate", name: "Pete"},
-// 		{id: "2", user_name: "user_b", password: "open-the-gate", name: "Luke"}
-// 	], function (err, newDocs) {
-// });
 
-// shipsDB.insert(
-// 	[	
-// 		{id: "1", owner: "2", name: "FR00001", plot: {x: 0, y: 0}, speed: 1000},
-// 		{id: "2", owner: "1", name: "The_Flying_Cat", plot: {x: 10, y: 15}, speed: 1230}, 
-// 		{id: "3", owner: "1", name: "Dark_Kitten_Matter" , plot: {x: 20, y: 35}, speed: 10}
-// 	], function (err, newDocs) {
-// });
-
-var ui = new ui();
 var players = [];
 var planets = [];
 var ships = [];
 
-io.serveClient(false);
-io.listen(8000);
-ui.setFooter("Server listening on 8000");
+ui.setFooter('SpaceWars listening at http://' + http.server.address().address + ':' + http.server.address().port);
+
 var serverStart = new Date().getTime();
+
+db.on("error", function (err) {
+    ui.log(err);
+}).on("connect", function (err) {
+    ui.log("Reddis connected");
+});
+
 
 var server = {
 
 	init: function(){
-		var rtn = true;
-		ui.log("Loading Players");
-		playersDB.find({}, function (err, res) {
-			if (res.length != 0) {
-				for(var i in res){
-					players.push(new Player(res[i].id, null, res[i].name, res[i].user_name));
-				}
-			} else {
-				ui.log("ERROR: Unable to load players.");
-				rtn = false;
-			};
-		});
+		// next_user_id
+		// users - username ID
+		// auths - authToken ID
+		// conections - socketID ID
+		// user:n - socket, username, name, email, password, authToken
+		// *
+		server.register("Zim", "Pete", "amail@gmail.com", "windows")
+		server.register("Xim", "Luke", "something@gmail.com", "cat");
+		server.register("Marven", "James", "specific@gmail.com", "dog");
+		server.register("Steve", "John", "apples@gmail.com", "something");
+		server.register("user_b", "Zorg", "zorg@empire.com", "open-the-gate");
 
-		ui.log("Loading Ships");
-		shipsDB.find({}, function (err, res) {
-			if (res.length != 0) {
-				for(var i in res){
-					ships.push(new Ship(res[i].id, res[i].owner, res[i].name, res[i].plot, res[i].speed));
-				}
-			} else {
-				ui.log("ERROR: Unable to load ships.");
-				rtn = false;
-			};
+    	// next_ship_id
+    	// ships - name ID
+    	// shipsOwner - owner ID 
+		// ship:n - owner, name, size, speed, plot, viewDistane, shape
+		// *
+		server.newShip(5, "Dark_Kitten_Matter", 1, 1000, {x: 0, y: 0}, 10, [[-0.5, 1], [0, -1], [0.5, 1]]);
+		server.newShip(5, "Intrepid_Puss", 1, 1000, {x: 10, y: 20}, 10, [[-0.5, 1], [0, -1], [0.5, 1]]);
+		server.newShip(2, "FR00001", 1, 1000, {x: 10, y: 20}, 10, [[-0.5, 1], [0, -1], [0.5, 1]]);
+		server.newShip(2, "FR00002", 1, 1000, {x: 10, y: 20}, 10, [[-0.5, 1], [0, -1], [0.5, 1]]);
+	},
+
+	/**
+	 *
+	 */
+	newShip: function(owner, name, size, speed, plot, viewDistane, shape){
+		db.hexists("ships", name, function(err, res){ 
+			if(res == 1) {
+				ui.log("Ship already exists [" + name + "]");
+				return false
+			}
+			db.incr("next_ship_id", function(err, ID){
+				// TODO: Serialise plot and shape data before placing in DB.
+				db.hmset("ship:"+ID, "owner", owner, "name", name, "size", size, "speed", speed, 
+					"x", plot.x, "y", plot.y, "viewDistane", viewDistane, "shape", shape);
+				db.sadd("user:" + owner + ":ships", ID);
+				db.hset("ships", name, ID);
+				ui.log("NEWSHIP: " + name + " " + ID);
+			});
 		});
-		return rtn;
+	},
+
+	/**
+	 *
+	 */
+	register: function(username, name, email, password){
+		// Check username exists.
+		db.hexists("users", username, function(err, res){ 
+			if(res) {
+				ui.log("Account already exists [" + username + "]");
+				return false
+			}
+
+			db.incr("next_user_id", function(err, ID){
+				var authToken = require('crypto').randomBytes(256).toString('hex');
+				db.hmset("user:"+ID, "username", username, "name", name, "email", email, "password", password, "authToken", authToken);
+				db.hset("users", username, ID);
+				db.hset("auths", authToken, ID);
+				ui.log("REGISTER: " + username);
+			});
+		});
 	},
 
 	/**
@@ -130,20 +169,27 @@ var server = {
 	 *
 	 */
 	authPlayer: function(socket, messageID, userName, password) {
-		playersDB.find({ $and: [{user_name: userName }, {password: password}] }, function (err, res) {
-			if (!err && res.length === 1) {
-					var p = server.getPlayerByUserName(userName);
-					if(!p){
-						return;
-					}
-					p.socket = socket.id;
+		db.hmget("users", userName, function(err, ID){
+			if(ID <= 0 || err){
+				socket.send(server.formatMsg(msgType.AUTH, {id: messageID, code: 0.1 }));
+				ui.log("Unable to Auth.");
+				return
+			}
 
-					socket.send(server.formatMsg(msgType.AUTH, {id: messageID, code: 1.1, t:  p.getAuthToken() }));
-					ui.log(util.format("AUTH SUCCESS: %s [%s]", userName, socket.id));
-			} else {
-				socket.send(server.formatMsg(msgType.AUTH, {id: messageID, code: 0.1 }))
-				ui.log(util.format("AUTH FAIL: ", userName, socket.id));
-			};
+			db.hgetall("user:"+ID, function(err, res){
+				if(!err && res.password == password){
+					db.hset("connections", socket.id, ID);
+					socket.send(server.formatMsg(msgType.AUTH, {id: messageID, code: 1.1, t:  res.authToken }));
+					ui.log(util.format("AUTH SUCCESS: %s [%s]", res.username, res.email));
+
+					// Store user details in socket
+					socket.user = res;
+					socket.user.id = ID;
+				}else{
+					socket.send(server.formatMsg(msgType.AUTH, {id: messageID, code: 0.1 }));
+					ui.log("Unable to Auth.");
+				}
+			});
 		});
 	},
 
@@ -184,36 +230,99 @@ var server = {
 	},
 
 	updateShipLoc: function(socket, messageID, shipID, waypoint){
-		// TODO: Confirm move is legal.
-		for(var i in ships){
-			if(ships[i].id == shipID){
-				ui.log("TODO: Call ship.setWaypoint.");
-				server.broadcast_all(server.formatMsg(msgType.UPDATE_SHIP, {id: messageID, s: {id: shipID, w: waypoint} }));
-				return;
-			}
-		}
+		// Check if user owns ship
+		db.smembers("user:"+socket.user.id+":ships", function(err, userShips) {
+			db.hgetall("ship:"+shipID, function(err, ship) {
+				var owner = false;
+				for(var i in userShips){
+					if (userShips[i] == shipID) {
+						owner = true;
+						break;
+					}
+				}
+				if (owner && ship) {
+					ui.log(ship.x);
+					ui.log(ship.y);
+					server.broadcast_all(server.formatMsg(msgType.UPDATE_SHIP, {id: messageID, s: {id: shipID, plot: {x: ship.x, y: ship.y}, w: waypoint} }));
+					ui.log("Moving ship.");
+				} else if (ship) {
+					ui.log(ship.x);
+					ui.log(ship.y);
+					socket.send(server.formatMsg(msgType.UPDATE_SHIP, {code: 0.2, id: messageID, s: {id: shipID, plot: {x: ship.x, y: ship.y}}}));
+					ui.log("ERROR: ship not owned by user.");
+				} else {
+					socket.send(server.formatMsg(msgType.UPDATE_SHIP, {code: 0.3, id: messageID}));
+					ui.log("ERROR: ship doesn't exist.");
+				}
+			});
+		});
 
-		// If we reach these statements then something has gone wrong.
-		socket.send(formatMsg(msgType.UPDATE_SHIP, {code: 0.2, id: messageID}));
-		ui.log("ERROR: updateShiploc unable to find shipID in memory.");
 	},
 
 	updateUser: function(socks, messageID, authToken){
-		var p = server.getPlayerByAuthToken(authToken);
-
-		var userShips = ships.filter(function(ship){
-			if(ship.owner == p.id){
-				return true;
-			}
+		db.hget("auths", authToken, function(err, ID){
+			db.hgetall("user:"+ID, function(err, user){
+				server.getUserShips(ID, function(ships) {
+					socks.send(server.formatMsg(msgType.UPDATE_USER, {id: messageID, user: {id: ID, n: user.name}, s: ships}));
+				});
+			});
 		});
-
-		socks.send(server.formatMsg(msgType.UPDATE_USER, {id: messageID, user: {id: p.id, n: p.name}, s: userShips}));
-
 	},
 
-	updateSpace: function(socks, data){
+	updateSpace: function(socks, data) {
 		// TODO: Remove non-relevant data from the ships to streamline resources.
-		socks.send(server.formatMsg(msgType.UPDATE_SPACE, {id: data.id, s: ships}));
+		db.get("next_ship_id", function(err, totalShips) {
+			server.getShips(1, [], totalShips, (function (socks, data) {
+				return function(ships) {
+					ui.log("USPACE:"+ships)
+					socks.send(server.formatMsg(msgType.UPDATE_SPACE, {id: data.id, s: ships}));
+				}
+			})(socks, data));
+		});
+	},
+
+	getShips: function(id, ships, maxID, callback) {
+		db.hgetall("ship:"+id, function(err, ship) {
+			if (ship) {
+				var s = new Ship(id, ship.owner, ship.name, {x: ship.x, y: ship.y}, ship.speed)
+				ships.push(s);
+			}
+
+			// Get next ship from ID or callback with ships
+			id++;
+			if (id <= maxID) {
+				server.getShips(id, ships, maxID, callback);
+			} else {
+				callback(ships);
+			}
+		});
+	},
+
+	getUserShips: function(userID, callback) {
+		var rtn = []
+		db.smembers("user:"+userID+":ships", function(err, userShips){
+			server.getUserShipsLookup(0, userShips, [], (function (callback) {
+				return function(ships) { callback(ships) };
+			})(callback));
+		});
+		return rtn;
+	},
+
+	getUserShipsLookup: function(n, userShips, ships, callback) {
+		var shipID = userShips[n];
+		db.hgetall("ship:"+shipID, function(err, ship){
+			if (ship) {
+				var s = new Ship(shipID, ship.owner, ship.name, {x: ship.x, y: ship.y}, ship.speed)
+   				ships.push(s);
+   			}
+
+   			n++;
+			if (n < userShips.length) {
+				server.getUserShipsLookup(n, userShips, ships, callback);
+			} else {
+				callback(ships);
+			}
+   		});
 	},
 
 	getShipsByPlayer: function(authToken) {
@@ -323,29 +432,24 @@ var server = {
 	}
 };
 
-if(server.init()){
-	ui.log("Data loaded into memory.");
-}
+server.init();
 server.initPlayerActivityMonitor(players, io);
 server.initServerMonitor(players, io);
 
 io.on('connection', function onConnection(client) {
-	ui.log("CONNECT: " + client.id);
+	// ui.log("CONNECT: " + client.id);
 
     client.on('message', function handleMessage(msg) {
 		var data = BISON.decode(msg);
 		if (data.type) {
-
-			// replace rubbish ping with this for now.
-			var p = server.getPlayerBySocketID(client.id);
-			if(p){
-				p.age = 0;
-			}
-
 			switch (data.type) {
 				case msgType.PING:
 					ui.log("Recv: PING")
 					// server.pingPlayer(client, data);
+					break;
+				case msgType.REGISTER:
+					ui.log("Recv: Register");
+					server.register(client, data.userName, data.name, data.email, data.password);
 					break;
 				case msgType.AUTH:
 					ui.log("Recv: AUTH");
@@ -374,12 +478,6 @@ io.on('connection', function onConnection(client) {
     });
 
 	client.on("disconnect", function onDisconnect() {
-		var removePlayer = server.getPlayerBySocketID(client.id);
-
-		if (removePlayer) {
-			removePlayer.socket = null;
-			ui.log(util.format("Player has disconnected: ", removePlayer.name, this.id));
-		};
-		
+		db.del("connections", client.id);
 	});
 });

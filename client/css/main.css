@@ -259,6 +259,10 @@ input[type=password] {
     padding: 2px 0 0 0;
 }
 
+#commands .commands-history li.error {
+    color: #A23F42;
+}
+
 #commands .commands-history :nth-last-child(1) { opacity: 1; }
 #commands .commands-history :nth-last-child(2) { opacity: 0.6; }
 #commands .commands-history :nth-last-child(3) { opacity: 0.3; }

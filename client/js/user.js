@@ -13,6 +13,8 @@ var User = function(token) {
             // game.the_player = new Player(conn.socket.id, data.n, data.s, data.t);
             this.name = data.user.n;
 
+            $('.commands-history').append($('<li>', {text: "Welcome back Captain {0}".format(this.name)}));
+
             console.log("You're authed as: %s", this.name);
 
             // TODO: See game.js:22 - Update existing objects (ships), or create new objects (ships).

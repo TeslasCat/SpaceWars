@@ -24,7 +24,7 @@ var game = {
             // Add ships to game
             for (var n = 0; n < data.s.length; n++) {
                 var s = data.s[n],
-                    ship = new Ship(s.id, s.name, s.plot);
+                    ship = new Ship(s.id, s.owner, s.name, s.plot);
                 // ship.setWaypoint({x: 0, y: 0});
                 game.ships.push(ship);
             }

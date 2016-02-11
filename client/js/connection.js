@@ -19,7 +19,7 @@ var conn = {
     /**
      * Init Connection to Server.
      */ 
-    socket : io("/"),
+    socket : io(":8000/"),
 
     /**
      * Sequential message ID
@@ -202,15 +202,34 @@ conn.socket.on('connect', function() {
                     game.players.splice(game.players.indexOf(p), 1);
                     break;
                 case msgType.UPDATE_SHIP:
-                console.log('MOVING');
-                    // i: p.id, s: p.ships[i].id, l: plot
-                    for(var i in game.ships){
-                        console.log(game.ships[i].id, data.s.id);
-                        if(game.ships[i].id == data.s.id){
-                            console.log("%s moves to [%s|%s]", game.ships[i].name, data.s.w.x, data.s.w.y);
-                            game.ships[i].setWaypoint(data.s.w, true);
+                    console.log('MOVING');
+
+                    if (data.code < 1) {
+                        console.log('Error moving ship');
+
+                        if (data.code == 0.2) {
+                            $('.commands-history').append($('<li>', {text: "Can't move ship that you don't own", class: 'error'}));
                         }
                     }
+
+                    // i: p.id, s: p.ships[i].id, l: plot
+                    if (data.s) {
+                        for(var i in game.ships) {
+                            console.log(game.ships[i].id, data.s.id);
+                            if(game.ships[i].id == data.s.id){
+                                if (data.s.plot) {
+                                    game.ships[i].setPlot(data.s.plot);
+                                }
+                                if (data.s.w) {
+                                    console.log("%s moves to [%s|%s]", game.ships[i].name, data.s.w.x, data.s.w.y);
+                                    game.ships[i].setWaypoint(data.s.w, true);
+                                } else {
+                                    game.ships[i].removeWaypoint();
+                                }
+                            }
+                        }
+                    }
+
                     break;
             }
         }
