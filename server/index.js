@@ -15,8 +15,10 @@ process.title = "SpaceWars";
 var util = require("util");
 
 var names = require('./random-name');
-var ui = require ('./ui.js');
-var Player = require("./Player");
+var helper = require("../lib/helper");
+var ui = require ('./ui.js'),
+	ui = new ui();
+var Player = require("../lib/player");
 var BISON = require("./bison");
 var Ship = require("../lib/ship");
 
@@ -43,7 +45,7 @@ var msgType = {
 	ERROR : -1,
 }
 
-var ui = new ui();
+
 var players = [];
 var planets = [];
 var ships = [];
