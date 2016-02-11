@@ -1,6 +1,15 @@
 #!/usr/bin/env node
 "use strict";
 
+var enviroment = 'dev';
+
+try {
+	require("../config/"+enviroment+".server.config");
+} catch (e) {
+	console.log("Config error: config/"+enviroment+".server.config not found");
+	process.exit(1);
+}
+
 process.title = "SpaceWars";
 
 var io = require('socket.io')();
@@ -12,7 +21,7 @@ var BISON = require("./bison");
 var Ship = require("./ship");
 
 var redis = require("redis");
-var db = redis.createClient({port: 6379});
+var db = redis.createClient(global.config.redis);
 
 /**
  * Message protocols
@@ -35,8 +44,8 @@ var planets = [];
 var ships = [];
 
 io.serveClient(false);
-io.listen(8000);
-ui.setFooter("Server listening on 8000");
+io.listen(global.config.port);
+ui.setFooter("Server listening on " + global.config.port);
 var serverStart = new Date().getTime();
 
 db.on("error", function (err) {
