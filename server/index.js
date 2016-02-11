@@ -12,8 +12,8 @@ try {
 
 process.title = "SpaceWars";
 
-var io = require('socket.io')();
 var util = require("util");
+
 var names = require('./random-name');
 var ui = require ('./ui.js');
 var Player = require("./Player");
@@ -22,6 +22,11 @@ var Ship = require("./ship");
 
 var redis = require("redis");
 var db = redis.createClient(global.config.redis);
+
+var http = require("./HTTPserver");
+http = new http(global.config);
+
+var io = require('socket.io')(http.server);
 
 /**
  * Message protocols
@@ -43,9 +48,8 @@ var players = [];
 var planets = [];
 var ships = [];
 
-io.serveClient(false);
-io.listen(global.config.port);
-ui.setFooter("Server listening on " + global.config.port);
+ui.setFooter('SpaceWars listening at http://' + http.server.address().address + ':' + http.server.address().port);
+
 var serverStart = new Date().getTime();
 
 db.on("error", function (err) {
