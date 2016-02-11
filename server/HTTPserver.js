@@ -14,7 +14,7 @@ var HTTPserver = function(config) {
     this.app.use('/', express.static(__dirname + '/../client'));
 
     // Expose shared lib files
-    this.app.use('/js/lib', express.static(__dirname + '/lib'));
+    this.app.use('/js/lib', express.static(__dirname + '/../lib'));
 
     this.server = this.app.listen(config.port);
 }

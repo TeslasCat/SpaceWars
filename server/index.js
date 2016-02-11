@@ -18,7 +18,7 @@ var names = require('./random-name');
 var ui = require ('./ui.js');
 var Player = require("./Player");
 var BISON = require("./bison");
-var Ship = require("./ship");
+var Ship = require("../lib/ship");
 
 var redis = require("redis");
 var db = redis.createClient(global.config.redis);
