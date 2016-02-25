@@ -105,8 +105,6 @@ var server = {
 
 		/* Server management stuff here */
 		setInterval(function() {
-			// ui.updatePlayerList([{name: "Beeep", ping: 3}]);
-
 			db.hgetall("connections", function(err, res){
 				var playersOnline = [];
 				for(var con in res){
@@ -132,6 +130,7 @@ var server = {
 			
 		// }, 5000); /* 5s */
 
+		// BUG: Can return the IPv6 address, will URI is wrong.
 		ui.setFooter('SpaceWars listening at http://' + http.server.address().address + ':' + http.server.address().port);
 
 		/* Example Data */
@@ -304,39 +303,36 @@ var server = {
 	/**
 	 *  PING Players
 	 */
-	pingPlayer: function(socket, data) {
-		var player = server.getPlayerBySocketID(socket.id);
+	// pingPlayer: function(socket, data) {
+	// 	var player = server.getPlayerBySocketID(socket.id);
 
-		if (!player) {
-			ui.log(util.format("ERROR: Unable to find player to ping: ", socket.id));
-			return false;
-		};
+	// 	if (!player) {
+	// 		ui.log(util.format("ERROR: Unable to find player to ping: ", socket.id));
+	// 		return false;
+	// 	};
 		
-		var newTimestamp = new Date().getTime();
-		var ping = newTimestamp-data.t;
-		player.age = 0;
-		player.ping = ping;
+	// 	var newTimestamp = new Date().getTime();
+	// 	var ping = newTimestamp-data.t;
+	// 	player.age = 0;
+	// 	player.ping = ping;
 		
-		// Send ping back to player
-		socket.send(server.formatMsg(msgType.PING, {id: data.id, i: player.id, n: player.name, p: ping}));
+	// 	// Send ping back to player
+	// 	socket.send(server.formatMsg(msgType.PING, {id: data.id, i: player.id, n: player.name, p: ping}));
 		
-		// Broadcast ping to other players
-		// server.broadcast_excluded(socket.id, server.formatMsg(msgType.UPDATE_PING, {i: socket.id, p: ping}));
+	// 	// Broadcast ping to other players
+	// 	// server.broadcast_excluded(socket.id, server.formatMsg(msgType.UPDATE_PING, {i: socket.id, p: ping}));
 
-		// Request a new ping
-		server.sendPing(socket);
-		return true;
-	},
+	// 	// Request a new ping
+	// 	server.sendPing(socket);
+	// 	return true;
+	// },
 
-	sendPing: function(client) {
-		setTimeout(function ping_client() {
-			var timestamp = new Date().getTime();
-			client.send(server.formatMsg(msgType.PING, { t: timestamp.toString()}));
-		}, 3000);
-	},
-
-
-
+	// sendPing: function(client) {
+	// 	setTimeout(function ping_client() {
+	// 		var timestamp = new Date().getTime();
+	// 		client.send(server.formatMsg(msgType.PING, { t: timestamp.toString()}));
+	// 	}, 3000);
+	// },
 
 	/* 
 	 * HELPER FUNCTIONS
