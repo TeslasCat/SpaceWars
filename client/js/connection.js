@@ -240,7 +240,7 @@ conn.socket.on('disconect', function() {
     console.log("Lost connection to server.");
 
     var p = conn.getPlayerBySocketID(data.i);
-    console.log("TODO: remove Shups.")
+    console.log("TODO: remove Ships.")
     console.log("Player has disconnected: %s %s", p.name, p.id);
     game.players.splice(game.players.indexOf(p), 1);
 });
