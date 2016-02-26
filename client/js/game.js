@@ -28,6 +28,15 @@ var game = {
                 // ship.setWaypoint({x: 0, y: 0});
                 game.ships.push(ship);
             }
+
+
+            // Add planets to game
+            for (var n = 0; n < data.p.length; n++) {
+                var p = data.p[n],
+                    planet = new Planet(p.name, p.plot, p.radius);
+
+                game.planets.push(planet);
+            }
         });
     },
     draw: function(lastDraw) {
