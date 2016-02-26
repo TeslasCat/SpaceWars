@@ -141,42 +141,47 @@ var server = {
 		ui.setFooter('SpaceWars listening at http://' + http.server.address().address + ':' + http.server.address().port);
 
 		/* Example Data */
-		server.register("Zim", "Pete", "amail@gmail.com", "windows")
-		server.register("Xim", "Luke", "something@gmail.com", "cat");
-		server.register("Marven", "James", "specific@gmail.com", "dog");
-		server.register("Steve", "John", "apples@gmail.com", "something");
-		server.register("user_b", "Zorg", "zorg@empire.com", "open-the-gate");
+		// Only add sample data if required
+		db.keys("user:*", function(err, keys) {
+			if (keys.length) return;
 
-		game.createObject('ship', {owner: 5, name: "Dark_Kitten_Matter", size: 1, speed: 1000, plot: {x: 0, y: 0}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
-		game.createObject('ship', {owner: 5, name: "Intrepid_Puss", size: 1, speed: 1000, plot: {x: -10, y: -30}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
-		game.createObject('ship', {owner: 2, name: "FR00001", size: 1, speed: 1000, plot: {x: 10, y: 20}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
-		game.createObject('ship', {owner: 2, name: "FR00002", size: 1, speed: 1000, plot: {x: 30, y: 90}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
+			// Generate users
+			server.register("Zim", "Pete", "amail@gmail.com", "windows")
+			server.register("Xim", "Luke", "something@gmail.com", "cat");
+			server.register("Marven", "James", "specific@gmail.com", "dog");
+			server.register("Steve", "John", "apples@gmail.com", "something");
+			server.register("user_b", "Zorg", "zorg@empire.com", "open-the-gate");
 
+			// Generate ships
+			game.createObject('ship', {owner: 5, name: "Dark_Kitten_Matter", size: 1, speed: 1000, plot: {x: 0, y: 0}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
+			game.createObject('ship', {owner: 5, name: "Intrepid_Puss", size: 1, speed: 1000, plot: {x: -10, y: -30}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
+			game.createObject('ship', {owner: 2, name: "FR00001", size: 1, speed: 1000, plot: {x: 10, y: 20}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
+			game.createObject('ship', {owner: 2, name: "FR00002", size: 1, speed: 1000, plot: {x: 30, y: 90}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
 
+	  	    // Generate random planets
+		    var tmpPlanet;
+		    for (var i = 0; i < 100; i++) {
 
-  	    // Generate random planets
-	    // var tmpPlanet;
-	    // for (var i = 0; i < 100; i++) {
+		        var distance = 1,
+		            tmpPlanet,
+		            n = 0;
+		        while (distance < 500) {
+		            n++
+		            if (n > 10) break;
+		            tmpPlanet = new Planet(null, 'Planet' + i, { x: 2000 - helper.rand(0, 4000), y: 1000 - helper.rand(0, 2000)}, helper.rand(5, 30));
 
-	    //     var distance = 1,
-	    //         tmpPlanet,
-	    //         n = 0;
-	    //     while (distance < 500) {
-	    //         n++
-	    //         if (n > 10) break;
-	    //         tmpPlanet = new Planet(null, 'Planet' + i, { x: 2000 - helper.rand(0, 4000), y: 1000 - helper.rand(0, 2000)}, helper.rand(5, 30));
+		            // Find closest planets
+		            // var closest = helper.getClosestPlanet(tmpPlanet.getPlot(), tmpPlanet.radius);
+		            // if (closest) {
+		            //     distance = closest.distance;
+		            // } else {
+		            //     distance = 1000;
+		            // }
+		        }
 
-	    //         // Find closest planets
-	    //         // var closest = helper.getClosestPlanet(tmpPlanet.getPlot(), tmpPlanet.radius);
-	    //         // if (closest) {
-	    //         //     distance = closest.distance;
-	    //         // } else {
-	    //         //     distance = 1000;
-	    //         // }
-	    //     }
-
-	    //     game.createObject('planet', {name: tmpPlanet.name, radius: tmpPlanet.radius, plot: tmpPlanet.plot}, function(s) { if (s) global.ui.log('Planet created'); else global.ui.log('Planet already exists')});
-	    // }
+		        game.createObject('planet', {name: tmpPlanet.name, radius: tmpPlanet.radius, plot: tmpPlanet.plot}, function(s) { if (s) global.ui.log('Planet created'); else global.ui.log('Planet already exists')});
+		    }
+		});
 		/* Example Data */
 	},
 
