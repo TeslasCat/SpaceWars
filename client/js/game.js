@@ -23,19 +23,37 @@ var game = {
             
             // Add ships to game
             for (var n = 0; n < data.s.length; n++) {
-                var s = data.s[n],
+                var s = data.s[n];
+
+                var ship = helper.getShipByID(s.id);
+                if (ship) {
+                    ship.setPlot(p.plot);
+                    if (s.waypoint) {
+                        ship.setWaypoint(s.waypoint);
+                    }
+                } else {
                     ship = new Ship(s.id, s.owner, s.name, s.plot);
-                // ship.setWaypoint({x: 0, y: 0});
-                game.ships.push(ship);
+                    if (s.waypoint) {
+                        ship.setWaypoint(s.waypoint);
+                    }
+                    game.ships.push(ship);
+                }
             }
 
 
             // Add planets to game
             for (var n = 0; n < data.p.length; n++) {
-                var p = data.p[n],
-                    planet = new Planet(p.name, p.plot, p.radius);
+                var p = data.p[n];
 
-                game.planets.push(planet);
+                console.log(p);
+
+                // Skip any planets that are already loaded
+                var planet = helper.getPlanetByID(p.id);
+
+                if (!planet) {
+                    planet = new Planet(p.id, p.name, p.plot, p.radius);
+                    game.planets.push(planet);
+                }
             }
         });
     },
