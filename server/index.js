@@ -16,14 +16,21 @@ var util = require("util");
 
 var names = require('./random-name');
 var helper = require("../lib/helper");
-var ui = require ('./ui.js'),
+var ui = require ('./ui'),
 	ui = new ui();
+global.ui = ui;
 var Player = require("../lib/player");
 var BISON = require("./bison");
 var Ship = require("../lib/ship");
+var Planet = require("../lib/planet");
 
 var redis = require("redis");
 var db = redis.createClient(global.config.redis);
+global.db = db;
+
+var Game = require("./game"),
+	game = new Game();
+
 
 var http = require("./HTTPserver");
 http = new http(global.config);
@@ -140,10 +147,36 @@ var server = {
 		server.register("Steve", "John", "apples@gmail.com", "something");
 		server.register("user_b", "Zorg", "zorg@empire.com", "open-the-gate");
 
-		server.newShip(5, "Dark_Kitten_Matter", 1, 1000, {x: 0, y: 0}, 10, [[-0.5, 1], [0, -1], [0.5, 1]]);
-		server.newShip(5, "Intrepid_Puss", 1, 1000, {x: 10, y: 20}, 10, [[-0.5, 1], [0, -1], [0.5, 1]]);
-		server.newShip(2, "FR00001", 1, 1000, {x: 10, y: 20}, 10, [[-0.5, 1], [0, -1], [0.5, 1]]);
-		server.newShip(2, "FR00002", 1, 1000, {x: 10, y: 20}, 10, [[-0.5, 1], [0, -1], [0.5, 1]]);
+		game.createObject('ship', {owner: 5, name: "Dark_Kitten_Matter", size: 1, speed: 1000, plot: {x: 0, y: 0}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
+		game.createObject('ship', {owner: 5, name: "Intrepid_Puss", size: 1, speed: 1000, plot: {x: -10, y: -30}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
+		game.createObject('ship', {owner: 2, name: "FR00001", size: 1, speed: 1000, plot: {x: 10, y: 20}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
+		game.createObject('ship', {owner: 2, name: "FR00002", size: 1, speed: 1000, plot: {x: 30, y: 90}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
+
+
+
+  	    // Generate random planets
+	    // var tmpPlanet;
+	    // for (var i = 0; i < 100; i++) {
+
+	    //     var distance = 1,
+	    //         tmpPlanet,
+	    //         n = 0;
+	    //     while (distance < 500) {
+	    //         n++
+	    //         if (n > 10) break;
+	    //         tmpPlanet = new Planet('Planet' + i, { x: 2000 - helper.rand(0, 4000), y: 1000 - helper.rand(0, 2000)}, helper.rand(5, 30));
+
+	    //         // Find closest planets
+	    //         // var closest = helper.getClosestPlanet(tmpPlanet.getPlot(), tmpPlanet.radius);
+	    //         // if (closest) {
+	    //         //     distance = closest.distance;
+	    //         // } else {
+	    //         //     distance = 1000;
+	    //         // }
+	    //     }
+
+	    //     game.createObject('planet', {name: tmpPlanet.name, radius: tmpPlanet.radius, plot: tmpPlanet.plot}, function(s) { if (s) global.ui.log('Planet created'); else global.ui.log('Planet already exists')});
+	    // }
 		/* Example Data */
 	},
 
@@ -201,71 +234,18 @@ var server = {
 	 */
 	updateUser: function(socks, messageID, authToken){
 		db.hget("auths", authToken, function(err, ID){
-			db.hgetall("user:"+ID, function(err, user){
-				server.getUserShips(ID, function(ships) {
-					socks.send(server.formatMsg(msgType.UPDATE_USER, {id: messageID, user: {id: ID, n: user.name}, s: ships}));
-				});
+			db.hgetall("user:"+ID, function(err, user) {
+				var ships = game.getShips(ID);
+				socks.send(server.formatMsg(msgType.UPDATE_USER, {id: messageID, user: {id: ID, n: user.name}, s: ships}));
 			});
 		});
-	},
-
-	getUserShips: function(userID, callback) {
-		var rtn = []
-		db.smembers("user:"+userID+":ships", function(err, userShips){
-			server.getUserShipsLookup(0, userShips, [], (function (callback) {
-				return function(ships) { callback(ships) };
-			})(callback));
-		});
-		return rtn;
-	},
-
-	getUserShipsLookup: function(n, userShips, ships, callback) {
-		var shipID = userShips[n];
-		db.hgetall("ship:"+shipID, function(err, ship){
-			if (ship) {
-				var s = new Ship(shipID, ship.owner, ship.name, {x: ship.x, y: ship.y}, ship.speed)
-   				ships.push(s);
-   			}
-
-   			n++;
-			if (n < userShips.length) {
-				server.getUserShipsLookup(n, userShips, ships, callback);
-			} else {
-				callback(ships);
-			}
-   		});
 	},
 
 	/**
 	 * UPDATE SPACE
 	 */
 	updateSpace: function(socks, data) {
-		// TODO: Remove non-relevant data from the ships to streamline resources.
-		db.get("next_ship_id", function(err, totalShips) {
-			server.getShips(1, [], totalShips, (function (socks, data) {
-				return function(ships) {
-					ui.log("USPACE:"+ships)
-					socks.send(server.formatMsg(msgType.UPDATE_SPACE, {id: data.id, s: ships}));
-				}
-			})(socks, data));
-		});
-	},
-
-	getShips: function(id, ships, maxID, callback) {
-		db.hgetall("ship:"+id, function(err, ship) {
-			if (ship) {
-				var s = new Ship(id, ship.owner, ship.name, {x: ship.x, y: ship.y}, ship.speed)
-				ships.push(s);
-			}
-
-			// Get next ship from ID or callback with ships
-			id++;
-			if (id <= maxID) {
-				server.getShips(id, ships, maxID, callback);
-			} else {
-				callback(ships);
-			}
-		});
+		socks.send(server.formatMsg(msgType.UPDATE_SPACE, {id: data.id, s: game.getShips(), p: game.getPlanets()}));
 	},
 
 	/**
@@ -333,26 +313,6 @@ var server = {
 	// 		client.send(server.formatMsg(msgType.PING, { t: timestamp.toString()}));
 	// 	}, 3000);
 	// },
-
-	/* 
-	 * HELPER FUNCTIONS
-	 */
-	newShip: function(owner, name, size, speed, plot, viewDistane, shape){
-		db.hexists("ships", name, function(err, res){ 
-			if(res == 1) {
-				ui.log("Ship already exists [" + name + "]");
-				return false
-			}
-			db.incr("next_ship_id", function(err, ID){
-				// TODO: Serialise plot and shape data before placing in DB.
-				db.hmset("ship:"+ID, "owner", owner, "name", name, "size", size, "speed", speed, 
-					"x", plot.x, "y", plot.y, "viewDistane", viewDistane, "shape", shape);
-				db.sadd("user:" + owner + ":ships", ID);
-				db.hset("ships", name, ID);
-				ui.log("NEWSHIP: " + name + " " + ID);
-			});
-		});
-	},
 
 	getPlayerBySocketID: function(socketID) {
 	    ui.log(util.format("ERROR: Unable to find Player by Socket: %s", socketID ))
