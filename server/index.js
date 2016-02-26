@@ -164,7 +164,7 @@ var server = {
 	    //     while (distance < 500) {
 	    //         n++
 	    //         if (n > 10) break;
-	    //         tmpPlanet = new Planet('Planet' + i, { x: 2000 - helper.rand(0, 4000), y: 1000 - helper.rand(0, 2000)}, helper.rand(5, 30));
+	    //         tmpPlanet = new Planet(null, 'Planet' + i, { x: 2000 - helper.rand(0, 4000), y: 1000 - helper.rand(0, 2000)}, helper.rand(5, 30));
 
 	    //         // Find closest planets
 	    //         // var closest = helper.getClosestPlanet(tmpPlanet.getPlot(), tmpPlanet.radius);

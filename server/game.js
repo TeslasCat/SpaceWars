@@ -27,8 +27,7 @@ Game.prototype.loadAll = function() {
     // Load all the planets
     global.db.keys("planet:*", function(err, keys) {
         self.getItems(0, keys, function(id, planet) {
-            global.ui.log('Planet ' + planet.x + " " + planet.y)
-            var p = new Planet(planet.name, {x: planet.x, y: planet.y}, planet.radius);
+            var p = new Planet(id, planet.name, {x: planet.x, y: planet.y}, planet.radius);
             self.planets.push(p);
         }, function() {
             global.ui.log("Finished loading planets " + self.planets.length);
@@ -76,7 +75,7 @@ Game.prototype.createObject = function(type, data, callback) {
             ui.log("NEWPLANET: " + data.name + " " + ID);
 
             // Create planet
-            var p = new Planet(data.name, data.plot, data.radius);
+            var p = new Planet(ID, data.name, data.plot, data.radius);
             self.planets.push(p);
 
             callback(p);
