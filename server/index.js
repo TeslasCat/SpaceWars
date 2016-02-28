@@ -54,7 +54,7 @@ var msgType = {
 	ERROR : -1,
 }
 
-var serverStart = new Date().getTime();
+var serverStart = helper.now();
 
 db.on("error", function (err) {
     ui.log(err);
@@ -276,7 +276,7 @@ var server = {
 			return;
 		}
 
-		ship.setWaypoint(waypoint, true);
+		waypoint = ship.setWaypoint(waypoint, true);
 
 		server.broadcast_all(server.formatMsg(msgType.UPDATE_SHIP, {id: messageID, s: {id: shipID, plot: {x: ship.plot.x, y: ship.plot.y}, w: waypoint} }));
 		ui.log("Moving ship.");
@@ -293,7 +293,7 @@ var server = {
 	// 		return false;
 	// 	};
 		
-	// 	var newTimestamp = new Date().getTime();
+	// 	var newTimestamp = helper.now();
 	// 	var ping = newTimestamp-data.t;
 	// 	player.age = 0;
 	// 	player.ping = ping;
@@ -311,7 +311,7 @@ var server = {
 
 	// sendPing: function(client) {
 	// 	setTimeout(function ping_client() {
-	// 		var timestamp = new Date().getTime();
+	// 		var timestamp = helper.now();
 	// 		client.send(server.formatMsg(msgType.PING, { t: timestamp.toString()}));
 	// 	}, 3000);
 	// },

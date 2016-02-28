@@ -120,14 +120,21 @@ Game.prototype.getPlanets = function() {
 
 
 Game.prototype.getShips = function(userID) {
+    var ships = [];
+
+    this.ships.forEach(function(item) {
+        item.move();
+        ships.push(item.getObject());
+    });
+
     if (!userID)
-        return this.ships;
+        return ships;
 
     // Get users ships
     var ships = [];
     this.ships.forEach(function(item) {
         if (item.owner == userID) {
-            ships.push(item);
+            ships.push(item.getObject());
         }
     });
 

@@ -45,8 +45,6 @@ var game = {
             for (var n = 0; n < data.p.length; n++) {
                 var p = data.p[n];
 
-                console.log(p);
-
                 // Skip any planets that are already loaded
                 var planet = helper.getPlanetByID(p.id);
 
