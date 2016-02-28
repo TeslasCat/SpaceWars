@@ -34,7 +34,7 @@ var game = {
                 } else {
                     ship = new Ship(s.id, s.owner, s.name, s.plot);
                     if (s.waypoint) {
-                        ship.setWaypoint(s.waypoint);
+                        ship.setWaypoint(s.waypoint, true);
                     }
                     game.ships.push(ship);
                 }

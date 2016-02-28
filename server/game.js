@@ -135,11 +135,16 @@ Game.prototype.getShips = function(userID) {
 }
 
 Game.prototype.getShip = function(shipID) {
+    var ship;
+
     this.ships.forEach(function(item) {
         if (item.id == shipID) {
-            return item;
+            ship = item;
+            return;
         }
     });
+
+    return ship;
 }
 
 

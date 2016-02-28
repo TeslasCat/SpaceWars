@@ -16,6 +16,8 @@ var util = require("util");
 
 var names = require('./random-name');
 var helper = require("../lib/helper");
+global.helper = helper;
+
 var ui = require ('./ui'),
 	ui = new ui();
 global.ui = ui;
@@ -256,33 +258,28 @@ var server = {
 	/**
 	 * UPDATE SHIP LOCATION
 	 */
-	updateShipLoc: function(socket, messageID, shipID, waypoint){
-		// Check if user owns ship
-		db.smembers("user:"+socket.user.id+":ships", function(err, userShips) {
-			db.hgetall("ship:"+shipID, function(err, ship) {
-				var owner = false;
-				for(var i in userShips){
-					if (userShips[i] == shipID) {
-						owner = true;
-						break;
-					}
-				}
-				if (owner && ship) {
-					ui.log(ship.x);
-					ui.log(ship.y);
-					server.broadcast_all(server.formatMsg(msgType.UPDATE_SHIP, {id: messageID, s: {id: shipID, plot: {x: ship.x, y: ship.y}, w: waypoint} }));
-					ui.log("Moving ship.");
-				} else if (ship) {
-					ui.log(ship.x);
-					ui.log(ship.y);
-					socket.send(server.formatMsg(msgType.UPDATE_SHIP, {code: 0.2, id: messageID, s: {id: shipID, plot: {x: ship.x, y: ship.y}}}));
-					ui.log("ERROR: ship not owned by user.");
-				} else {
-					socket.send(server.formatMsg(msgType.UPDATE_SHIP, {code: 0.3, id: messageID}));
-					ui.log("ERROR: ship doesn't exist.");
-				}
-			});
-		});
+	updateShipLoc: function(socket, messageID, shipID, waypoint) {
+		// Lookup ship
+		var ship = game.getShip(shipID);
+
+		// Check ship exists
+		if (!ship) {
+			socket.send(server.formatMsg(msgType.UPDATE_SHIP, {code: 0.3, id: messageID}));
+			ui.log("ERROR: ship doesn't exist.");
+			return;
+		}
+
+		// Check user owns ship
+		if (ship.owner != socket.user.id) {
+			socket.send(server.formatMsg(msgType.UPDATE_SHIP, {code: 0.2, id: messageID, s: {id: shipID, plot: {x: ship.x, y: ship.y}}}));
+			ui.log("ERROR: ship not owned by user.");
+			return;
+		}
+
+		ship.setWaypoint(waypoint, true);
+
+		server.broadcast_all(server.formatMsg(msgType.UPDATE_SHIP, {id: messageID, s: {id: shipID, plot: {x: ship.plot.x, y: ship.plot.y}, w: waypoint} }));
+		ui.log("Moving ship.");
 	},
 
 	/**
