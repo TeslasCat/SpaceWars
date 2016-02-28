@@ -96,6 +96,10 @@ UI.prototype.updatePlayerList = function(players){
 UI.prototype.log = function(str){
     var self = this;    
     var d = new Date();
+
+    if (typeof str == 'object' || typeof str == 'array') {
+        str = JSON.stringify(str);
+    }
     
     // make the screens say the right things
     this.elements['main'].insertBottom(util.format("%s:%s:%s | %s",d.getHours(), d.getMinutes(), d.getSeconds(), str));
