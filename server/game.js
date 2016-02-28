@@ -24,7 +24,11 @@ Game.prototype.loadAll = function() {
             }
 
             if (ship.waypoint) {
-                s.waypoint = JSON.parse(ship.waypoint);
+                try {
+                    s.waypoint = JSON.parse(ship.waypoint);
+                } catch (e) {
+                    // Invalid waypoint
+                }
             }
 
             self.ships.push(s);
