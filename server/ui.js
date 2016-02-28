@@ -93,16 +93,24 @@ UI.prototype.updatePlayerList = function(players){
 	this.screen.render();
 }
 
-UI.prototype.log = function(str){
+UI.prototype.log = function() {
     var self = this;    
     var d = new Date();
 
-    if (typeof str == 'object' || typeof str == 'array') {
-        str = JSON.stringify(str);
+    var str = '';
+
+    for (var i = 0; i < arguments.length; ++i) {
+        var tmp = arguments[i];
+
+        if (typeof tmp == 'object' || typeof tmp == 'array') {
+            tmp = JSON.stringify(tmp);
+        }
+
+        str += tmp + ' | ';
     }
-    
+
     // make the screens say the right things
-    this.elements['main'].insertBottom(util.format("%s:%s:%s | %s",d.getHours(), d.getMinutes(), d.getSeconds(), str));
+    this.elements['main'].insertBottom(util.format("%s:%s:%s | %s",d.getHours(), d.getMinutes(), d.getSeconds(), str.slice(0, -3)));
     this.elements['main'].scroll(10);
 
     // Finally render to the screen.
