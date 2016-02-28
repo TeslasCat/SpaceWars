@@ -37,32 +37,6 @@ $(function() {
     // Add a new planet
     game.planets = [];
 
-
-    // Generate random planets
-    var tmpPlanet;
-    for (var i = 0; i < 100; i++) {
-
-        var distance = 1,
-            tmpPlanet,
-            n = 0;
-        while (distance < 500) {
-            n++
-            if (n > 10) break;
-            tmpPlanet = new Planet('Planet' + i, { x: 2000 - helper.rand(0, 4000), y: 1000 - helper.rand(0, 2000)}, helper.rand(5, 30));
-
-            // Find closest planets
-            var closest = helper.getClosestPlanet(tmpPlanet.getPlot(), tmpPlanet.radius);
-            if (closest) {
-                distance = closest.distance;
-            } else {
-                distance = 1000;
-            }
-        }
-
-        game.planets.push(tmpPlanet);
-    }
-
-
     $('#login input').on('keydown', function(e) {
         var keyCode = e.keyCode || e.which;
 

@@ -16,14 +16,23 @@ var util = require("util");
 
 var names = require('./random-name');
 var helper = require("../lib/helper");
-var ui = require ('./ui.js'),
+global.helper = helper;
+
+var ui = require ('./ui'),
 	ui = new ui();
+global.ui = ui;
 var Player = require("../lib/player");
 var BISON = require("./bison");
-var Ship = require("../lib/ship");
+var Ship = require("./ship");
+var Planet = require("../lib/planet");
 
 var redis = require("redis");
 var db = redis.createClient(global.config.redis);
+global.db = db;
+
+var Game = require("./game"),
+	game = new Game();
+
 
 var http = require("./HTTPserver");
 http = new http(global.config);
@@ -45,7 +54,7 @@ var msgType = {
 	ERROR : -1,
 }
 
-var serverStart = new Date().getTime();
+var serverStart = helper.now();
 
 db.on("error", function (err) {
     ui.log(err);
@@ -134,16 +143,47 @@ var server = {
 		ui.setFooter('SpaceWars listening at http://' + http.server.address().address + ':' + http.server.address().port);
 
 		/* Example Data */
-		server.register("Zim", "Pete", "amail@gmail.com", "windows")
-		server.register("Xim", "Luke", "something@gmail.com", "cat");
-		server.register("Marven", "James", "specific@gmail.com", "dog");
-		server.register("Steve", "John", "apples@gmail.com", "something");
-		server.register("user_b", "Zorg", "zorg@empire.com", "open-the-gate");
+		// Only add sample data if required
+		db.keys("user:*", function(err, keys) {
+			if (keys.length) return;
 
-		server.newShip(5, "Dark_Kitten_Matter", 1, 1000, {x: 0, y: 0}, 10, [[-0.5, 1], [0, -1], [0.5, 1]]);
-		server.newShip(5, "Intrepid_Puss", 1, 1000, {x: 10, y: 20}, 10, [[-0.5, 1], [0, -1], [0.5, 1]]);
-		server.newShip(2, "FR00001", 1, 1000, {x: 10, y: 20}, 10, [[-0.5, 1], [0, -1], [0.5, 1]]);
-		server.newShip(2, "FR00002", 1, 1000, {x: 10, y: 20}, 10, [[-0.5, 1], [0, -1], [0.5, 1]]);
+			// Generate users
+			server.register("Zim", "Pete", "amail@gmail.com", "windows")
+			server.register("Xim", "Luke", "something@gmail.com", "cat");
+			server.register("Marven", "James", "specific@gmail.com", "dog");
+			server.register("Steve", "John", "apples@gmail.com", "something");
+			server.register("user_b", "Zorg", "zorg@empire.com", "open-the-gate");
+
+			// Generate ships
+			game.createObject('ship', {owner: 5, name: "Dark_Kitten_Matter", size: 1 / 1000, speed: 1000  / 3600, plot: {x: 0, y: 0}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
+			game.createObject('ship', {owner: 5, name: "Intrepid_Puss", size: 1 / 1000, speed: 1000 / 3600, plot: {x: -10, y: -30}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
+			game.createObject('ship', {owner: 2, name: "FR00001", size: 1 / 1000, speed: 1000 / 3600, plot: {x: 10, y: 20}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
+			game.createObject('ship', {owner: 2, name: "FR00002", size: 1 / 1000, speed: 1000 / 3600, plot: {x: 30, y: 90}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
+
+	  	    // Generate random planets
+		    var tmpPlanet;
+		    for (var i = 0; i < 100; i++) {
+
+		        var distance = 1,
+		            tmpPlanet,
+		            n = 0;
+		        while (distance < 500) {
+		            n++
+		            if (n > 10) break;
+		            tmpPlanet = new Planet(null, 'Planet' + i, { x: 2000 - helper.rand(0, 4000), y: 1000 - helper.rand(0, 2000)}, helper.rand(5, 30));
+
+		            // Find closest planets
+		            // var closest = helper.getClosestPlanet(tmpPlanet.getPlot(), tmpPlanet.radius);
+		            // if (closest) {
+		            //     distance = closest.distance;
+		            // } else {
+		            //     distance = 1000;
+		            // }
+		        }
+
+		        game.createObject('planet', {name: tmpPlanet.name, radius: tmpPlanet.radius, plot: tmpPlanet.plot}, function(s) { if (s) global.ui.log('Planet created'); else global.ui.log('Planet already exists')});
+		    }
+		});
 		/* Example Data */
 	},
 
@@ -201,103 +241,44 @@ var server = {
 	 */
 	updateUser: function(socks, messageID, authToken){
 		db.hget("auths", authToken, function(err, ID){
-			db.hgetall("user:"+ID, function(err, user){
-				server.getUserShips(ID, function(ships) {
-					socks.send(server.formatMsg(msgType.UPDATE_USER, {id: messageID, user: {id: ID, n: user.name}, s: ships}));
-				});
+			db.hgetall("user:"+ID, function(err, user) {
+				var ships = game.getShips(ID);
+				socks.send(server.formatMsg(msgType.UPDATE_USER, {id: messageID, user: {id: ID, n: user.name}, s: ships}));
 			});
 		});
-	},
-
-	getUserShips: function(userID, callback) {
-		var rtn = []
-		db.smembers("user:"+userID+":ships", function(err, userShips){
-			server.getUserShipsLookup(0, userShips, [], (function (callback) {
-				return function(ships) { callback(ships) };
-			})(callback));
-		});
-		return rtn;
-	},
-
-	getUserShipsLookup: function(n, userShips, ships, callback) {
-		var shipID = userShips[n];
-		db.hgetall("ship:"+shipID, function(err, ship){
-			if (ship) {
-				var s = new Ship(shipID, ship.owner, ship.name, {x: ship.x, y: ship.y}, ship.speed)
-   				ships.push(s);
-   			}
-
-   			n++;
-			if (n < userShips.length) {
-				server.getUserShipsLookup(n, userShips, ships, callback);
-			} else {
-				callback(ships);
-			}
-   		});
 	},
 
 	/**
 	 * UPDATE SPACE
 	 */
 	updateSpace: function(socks, data) {
-		// TODO: Remove non-relevant data from the ships to streamline resources.
-		db.get("next_ship_id", function(err, totalShips) {
-			server.getShips(1, [], totalShips, (function (socks, data) {
-				return function(ships) {
-					ui.log("USPACE:"+ships)
-					socks.send(server.formatMsg(msgType.UPDATE_SPACE, {id: data.id, s: ships}));
-				}
-			})(socks, data));
-		});
-	},
-
-	getShips: function(id, ships, maxID, callback) {
-		db.hgetall("ship:"+id, function(err, ship) {
-			if (ship) {
-				var s = new Ship(id, ship.owner, ship.name, {x: ship.x, y: ship.y}, ship.speed)
-				ships.push(s);
-			}
-
-			// Get next ship from ID or callback with ships
-			id++;
-			if (id <= maxID) {
-				server.getShips(id, ships, maxID, callback);
-			} else {
-				callback(ships);
-			}
-		});
+		socks.send(server.formatMsg(msgType.UPDATE_SPACE, {id: data.id, s: game.getShips(), p: game.getPlanets()}));
 	},
 
 	/**
 	 * UPDATE SHIP LOCATION
 	 */
-	updateShipLoc: function(socket, messageID, shipID, waypoint){
-		// Check if user owns ship
-		db.smembers("user:"+socket.user.id+":ships", function(err, userShips) {
-			db.hgetall("ship:"+shipID, function(err, ship) {
-				var owner = false;
-				for(var i in userShips){
-					if (userShips[i] == shipID) {
-						owner = true;
-						break;
-					}
-				}
-				if (owner && ship) {
-					ui.log(ship.x);
-					ui.log(ship.y);
-					server.broadcast_all(server.formatMsg(msgType.UPDATE_SHIP, {id: messageID, s: {id: shipID, plot: {x: ship.x, y: ship.y}, w: waypoint} }));
-					ui.log("Moving ship.");
-				} else if (ship) {
-					ui.log(ship.x);
-					ui.log(ship.y);
-					socket.send(server.formatMsg(msgType.UPDATE_SHIP, {code: 0.2, id: messageID, s: {id: shipID, plot: {x: ship.x, y: ship.y}}}));
-					ui.log("ERROR: ship not owned by user.");
-				} else {
-					socket.send(server.formatMsg(msgType.UPDATE_SHIP, {code: 0.3, id: messageID}));
-					ui.log("ERROR: ship doesn't exist.");
-				}
-			});
-		});
+	updateShipLoc: function(socket, messageID, shipID, waypoint) {
+		// Lookup ship
+		var ship = game.getShip(shipID);
+
+		// Check ship exists
+		if (!ship) {
+			socket.send(server.formatMsg(msgType.UPDATE_SHIP, {code: 0.3, id: messageID}));
+			ui.log("ERROR: ship doesn't exist.");
+			return;
+		}
+
+		// Check user owns ship
+		if (ship.owner != socket.user.id) {
+			socket.send(server.formatMsg(msgType.UPDATE_SHIP, {code: 0.2, id: messageID, s: {id: shipID, plot: {x: ship.x, y: ship.y}}}));
+			ui.log("ERROR: ship not owned by user.");
+			return;
+		}
+
+		waypoint = ship.setWaypoint(waypoint, true);
+
+		server.broadcast_all(server.formatMsg(msgType.UPDATE_SHIP, {id: messageID, s: {id: shipID, plot: {x: ship.plot.x, y: ship.plot.y}, w: waypoint} }));
 	},
 
 	/**
@@ -311,7 +292,7 @@ var server = {
 	// 		return false;
 	// 	};
 		
-	// 	var newTimestamp = new Date().getTime();
+	// 	var newTimestamp = helper.now();
 	// 	var ping = newTimestamp-data.t;
 	// 	player.age = 0;
 	// 	player.ping = ping;
@@ -329,30 +310,10 @@ var server = {
 
 	// sendPing: function(client) {
 	// 	setTimeout(function ping_client() {
-	// 		var timestamp = new Date().getTime();
+	// 		var timestamp = helper.now();
 	// 		client.send(server.formatMsg(msgType.PING, { t: timestamp.toString()}));
 	// 	}, 3000);
 	// },
-
-	/* 
-	 * HELPER FUNCTIONS
-	 */
-	newShip: function(owner, name, size, speed, plot, viewDistane, shape){
-		db.hexists("ships", name, function(err, res){ 
-			if(res == 1) {
-				ui.log("Ship already exists [" + name + "]");
-				return false
-			}
-			db.incr("next_ship_id", function(err, ID){
-				// TODO: Serialise plot and shape data before placing in DB.
-				db.hmset("ship:"+ID, "owner", owner, "name", name, "size", size, "speed", speed, 
-					"x", plot.x, "y", plot.y, "viewDistane", viewDistane, "shape", shape);
-				db.sadd("user:" + owner + ":ships", ID);
-				db.hset("ships", name, ID);
-				ui.log("NEWSHIP: " + name + " " + ID);
-			});
-		});
-	},
 
 	getPlayerBySocketID: function(socketID) {
 	    ui.log(util.format("ERROR: Unable to find Player by Socket: %s", socketID ))
