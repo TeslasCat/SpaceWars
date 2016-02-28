@@ -110,7 +110,15 @@ UI.prototype.log = function() {
     }
 
     // make the screens say the right things
-    this.elements['main'].insertBottom(util.format("%s:%s:%s | %s",d.getHours(), d.getMinutes(), d.getSeconds(), str.slice(0, -3)));
+    var seconds = d.getSeconds(),
+        minutes = d.getMinutes(),
+        hours = d.getHours();
+
+    if (seconds < 10) seconds = '0' + seconds;
+    if (minutes < 10) minutes = '0' + minutes;
+    if (hours < 10) hours = '0' + hours;
+
+    this.elements['main'].insertBottom(util.format("%s:%s:%s | %s", hours, minutes, seconds, str.slice(0, -3)));
     this.elements['main'].scroll(10);
 
     // Finally render to the screen.
