@@ -27,7 +27,7 @@ var game = {
 
                 var ship = helper.getShipByID(s.id);
                 if (ship) {
-                    ship.setPlot(p.plot);
+                    ship.setPlot(s.plot);
                     if (s.waypoint) {
                         ship.setWaypoint(s.waypoint);
                     }
@@ -80,7 +80,7 @@ var game = {
             }
 
             for(i = game.ships.length - 1; i >= 0; i--) {
-                game.ships[i].move(duration);
+                game.ships[i].move();
                 game.ships[i].draw();
             }
         }

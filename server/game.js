@@ -18,6 +18,15 @@ Game.prototype.loadAll = function() {
     global.db.keys("ship:*", function(err, keys) {
         self.getItems(0, keys, function(id, ship) {
             var s = new Ship(id, ship.owner, ship.name, {x: ship.x, y: ship.y}, ship.speed);
+
+            if (ship.lastUpdated) {
+                s.lastUpdated = ship.lastUpdated;
+            }
+
+            if (ship.waypoint) {
+                s.waypoint = JSON.parse(ship.waypoint);
+            }
+
             self.ships.push(s);
         }, function() {
             global.ui.log("Finished loading ships " + self.ships.length);

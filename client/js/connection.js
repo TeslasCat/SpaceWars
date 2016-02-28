@@ -215,7 +215,6 @@ conn.socket.on('connect', function() {
                     // i: p.id, s: p.ships[i].id, l: plot
                     if (data.s) {
                         for(var i in game.ships) {
-                            console.log(game.ships[i].id, data.s.id);
                             if(game.ships[i].id == data.s.id){
                                 if (data.s.plot) {
                                     game.ships[i].setPlot(data.s.plot);

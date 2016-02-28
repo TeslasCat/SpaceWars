@@ -23,7 +23,7 @@ var ui = require ('./ui'),
 global.ui = ui;
 var Player = require("../lib/player");
 var BISON = require("./bison");
-var Ship = require("../lib/ship");
+var Ship = require("./ship");
 var Planet = require("../lib/planet");
 
 var redis = require("redis");
@@ -155,10 +155,10 @@ var server = {
 			server.register("user_b", "Zorg", "zorg@empire.com", "open-the-gate");
 
 			// Generate ships
-			game.createObject('ship', {owner: 5, name: "Dark_Kitten_Matter", size: 1, speed: 1000, plot: {x: 0, y: 0}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
-			game.createObject('ship', {owner: 5, name: "Intrepid_Puss", size: 1, speed: 1000, plot: {x: -10, y: -30}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
-			game.createObject('ship', {owner: 2, name: "FR00001", size: 1, speed: 1000, plot: {x: 10, y: 20}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
-			game.createObject('ship', {owner: 2, name: "FR00002", size: 1, speed: 1000, plot: {x: 30, y: 90}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
+			game.createObject('ship', {owner: 5, name: "Dark_Kitten_Matter", size: 1 / 1000, speed: 1000  / 3600, plot: {x: 0, y: 0}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
+			game.createObject('ship', {owner: 5, name: "Intrepid_Puss", size: 1 / 1000, speed: 1000 / 3600, plot: {x: -10, y: -30}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
+			game.createObject('ship', {owner: 2, name: "FR00001", size: 1 / 1000, speed: 1000 / 3600, plot: {x: 10, y: 20}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
+			game.createObject('ship', {owner: 2, name: "FR00002", size: 1 / 1000, speed: 1000 / 3600, plot: {x: 30, y: 90}, viewDistance: 10, shape: [[-0.5, 1], [0, -1], [0.5, 1]]}, function(s) { if (s) global.ui.log('Ship created'); else global.ui.log('Ship already exists')});
 
 	  	    // Generate random planets
 		    var tmpPlanet;
@@ -279,7 +279,6 @@ var server = {
 		waypoint = ship.setWaypoint(waypoint, true);
 
 		server.broadcast_all(server.formatMsg(msgType.UPDATE_SHIP, {id: messageID, s: {id: shipID, plot: {x: ship.plot.x, y: ship.plot.y}, w: waypoint} }));
-		ui.log("Moving ship.");
 	},
 
 	/**
