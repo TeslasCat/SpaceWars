@@ -2,6 +2,7 @@
 
 var blessed = require('blessed');
 var util    = require('util');
+var log     = require('./logger');
 
 var UI = function() {
     this.elements = [];
@@ -123,6 +124,8 @@ UI.prototype.log = function() {
 
     // Finally render to the screen.
     this.screen.render();
+
+    log.info(str.slice(0, -3))
 }
 
 UI.prototype.setFooter = function(str){
