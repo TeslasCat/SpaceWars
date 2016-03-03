@@ -1,6 +1,7 @@
 .vagrant/
 node_modules/
-server/logs
+server/logs/*
+server/data
 redis*
 config/dev.server.config
 config/dev.client.config
